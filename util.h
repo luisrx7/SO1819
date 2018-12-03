@@ -5,11 +5,17 @@
 
 
 typedef struct{
-int tipo; //=1 é login   =2 é normal
-  char username[8];
-  int valid;//0 nao é valido    1 é valido    2 ja em uso
+int tipo; //=1 é login   =2 logout    =3 lockline    =4 unlockline
+char username[9];
+int valid;//0 nao é valido    1 é valido    2 ja em uso
 
 int remetente;
 char linha[45];
 int linhaPoxy;
 }PEDIDO;
+
+typedef struct{
+int userPid;
+char user[9];
+int editinglineN;
+}CLIENTE;
