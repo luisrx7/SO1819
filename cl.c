@@ -92,7 +92,6 @@ int logout(){
   n=write(fd_ser,&p,sizeof(PEDIDO));
   printf("Foi enviado logout\n");
   exit(1);
-
 }
 
 void recebe(int s){
@@ -134,12 +133,12 @@ void recebelinha(int s){
   p.username[8] = '\0';
 
 
-  for(j=0;j<45;j++){
+  for(j=0;j<46;j++){
     if(p.linha[j] =='\n' || p.linha[j] =='\0'){
       p.linha[j] = ' ';
     }
   }
-  p.linha[45] = '\0';
+  p.linha[44] = '\0';
 
   strcpy(linharecebida,"                                            ");
   strcpy(linharecebida,p.linha);
@@ -298,7 +297,7 @@ int main(int argc, char **argv) {
            wrefresh(stdscr);
            if(posNL!= -1){
              int k;
-             for (k = 3; k < (48); k++) { //escrever linha
+             for (k = 3; k < (45+3); k++) { //escrever linha
                   mvaddch(posNL,k,linharecebida[k-3]);
              }
 
