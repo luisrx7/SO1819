@@ -132,7 +132,7 @@ void recebelinha(int s){
   }
   p.linha[45] = '\0';
 
-  strcpy(linharecebida,"                                             ");
+  strcpy(linharecebida,"                                            ");
   strcpy(linharecebida,p.linha);
   posNL = p.linhaPoxy;
   //printf("recebi a linha %s\t",p.linha);
@@ -164,7 +164,7 @@ int main(int argc, char **argv) {
 
     WINDOW * uiWindow;
     WINDOW * notificacaoWindow;
-    WINDOW * shortcutsWindow;
+    WINDOW * lnWindow;
 
     char *nrows = getenv("MEDIT_MAXLINES");
     char *ncols = getenv("MEDIT_MAXCOLUMNS");
@@ -241,27 +241,32 @@ int main(int argc, char **argv) {
        curs_set(2); //Trata da visibilidade do cursor (0-invisible,1- normal, 2-high visibilty)
        noecho(); // Não haver echo das teclas
        keypad(stdscr,true);
-       nodelay(stdscr,true);
        init_pair(1,COLOR_BLUE, COLOR_BLACK); //numero do par , cor texto , cor fundo
        init_pair(2,COLOR_WHITE, COLOR_BLACK);
-
+       init_pair(3,COLOR_RED, COLOR_WHITE);
 
 
        notificacaoWindow = newwin(3,ncol,0,0);
        wbkgd(notificacaoWindow, COLOR_PAIR(1));
 
-       uiWindow = newwin(nrow-3,ncol,3,0);//linhas cols y x
+       uiWindow = newwin(nrow-3,ncol,3,3);//linhas cols y x
        wbkgd(uiWindow, COLOR_PAIR(2));
        scrollok(uiWindow,true);
 
+       lnWindow = newwin(nrow-3,3,3,0);//linhas cols y x
+       wbkgd(lnWindow, COLOR_PAIR(1));
+       scrollok(lnWindow,true);
+
+       wrefresh(lnWindow);
        /*shortcutsWindow = newwin(4,75,18,0);
        wprintw(shortcutsWindow,"\n\t\t\tnotificacao");
        wbkgd(shortcutsWindow, COLOR_PAIR(1));*/
 
        wrefresh(uiWindow);
        wrefresh(notificacaoWindow);
-       //wrefresh(shortcutsWindow);
+       wrefresh(lnWindow);
 
+       nodelay(stdscr,true);
        //getmaxyx(stdscr,nrow,ncol);
        posx = ncol/2;
        posy = nrow/2;
@@ -281,14 +286,23 @@ int main(int argc, char **argv) {
            wrefresh(stdscr);
            if(posNL!= -1){
              int k;
-             for (k = 0; k < 45; k++) {
-                  mvaddch(posNL,k,linharecebida[k]);
+             for (k = 3; k < (48); k++) {
+                  mvaddch(posNL,k,linharecebida[k-3]);
              }
+             char SposNL[3];
+             sprintf(SposNL, "%d ", (posNL-3));
+             SposNL[2] = ' ';
+
+             for (k = 0; k < 3; k++) {
+                  mvaddch(posNL,k,SposNL[k]);
+             }
+             //mvwprintw(lnWindow,posNL,0,c);
              wrefresh(uiWindow);
+             wrefresh(lnWindow);
              move(posy,posx);
              posNL = -1;
              //printf("printou esta merda%s\n", linharecebida);
-             strcpy(linharecebida,"                                             ");
+             strcpy(linharecebida,"                                            ");
            }
          }
          while(ch == ERR);
