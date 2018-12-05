@@ -12,6 +12,7 @@
 
 char username[9]={0};
 char linharecebida[45];
+char useraeditarlinha[9];
 int posNL=-1;
 char linhaeditada[45];
 
@@ -125,6 +126,14 @@ void recebelinha(int s){
   close(fd_cli);
 
   int j;
+  for(j=0;j<9;j++){
+    if(p.username[j] =='\n' || p.username[j] =='\0'){
+      p.username[j] = ' ';
+    }
+  }
+  p.username[8] = '\0';
+
+
   for(j=0;j<45;j++){
     if(p.linha[j] =='\n' || p.linha[j] =='\0'){
       p.linha[j] = ' ';
@@ -134,6 +143,9 @@ void recebelinha(int s){
 
   strcpy(linharecebida,"                                            ");
   strcpy(linharecebida,p.linha);
+
+  strcpy(useraeditarlinha,"        ");
+  strcpy(useraeditarlinha,p.username);
   posNL = p.linhaPoxy;
   //printf("recebi a linha %s\t",p.linha);
 }
@@ -274,7 +286,7 @@ int main(int argc, char **argv) {
        wclear(uiWindow);
        mvwprintw(notificacaoWindow,0,0,"Modo de navegação no texto");
        move(posy,posx);
-       mvwprintw(uiWindow,nrow - 5,(ncol/2)-3, "(%d,%d) ",posy,posx);
+      // mvwprintw(uiWindow,3,(ncol/2)-3, "(%d,%d) ",posy-3,posx-3);
        wrefresh(uiWindow);
        wrefresh(notificacaoWindow);
        do{
@@ -286,9 +298,11 @@ int main(int argc, char **argv) {
            wrefresh(stdscr);
            if(posNL!= -1){
              int k;
-             for (k = 3; k < (48); k++) {
+             for (k = 3; k < (48); k++) { //escrever linha
                   mvaddch(posNL,k,linharecebida[k-3]);
              }
+
+             //escrever n linha
              char SposNL[3];
              sprintf(SposNL, "%d ", (posNL-3));
              SposNL[2] = ' ';
@@ -296,6 +310,12 @@ int main(int argc, char **argv) {
              for (k = 0; k < 3; k++) {
                   mvaddch(posNL,k,SposNL[k]);
              }
+
+             /*
+             for (k = 0; k < 9; k++) { //escrever user
+                  mvaddch(posNL,k+ncol+3+2,useraeditarlinha[k]);
+             }*/
+
              //mvwprintw(lnWindow,posNL,0,c);
              wrefresh(uiWindow);
              wrefresh(lnWindow);
@@ -317,9 +337,9 @@ int main(int argc, char **argv) {
              if(edicao == 0){ // se esta a 0 é porque antes estava a 1 ou seja tem informacao para enviar para o servidor
                wprintw(notificacaoWindow,"Modo de navegação no texto");
                int k;
-               for (k = 0; k < 45; k++) {
+               for (k = 3; k < 48; k++) {
                  int c = (mvinch(posy, k) & A_CHARTEXT);
-                 linha[k] = c;
+                 linha[k-3] = c;
                }
                unlockline(posy,linha);
                move(posy,posx);
@@ -330,9 +350,9 @@ int main(int argc, char **argv) {
                  //scr_dump("bak");
                  strcpy(linha,""); // lim
                  int k;
-                 for (k = 0; k < 45; k++) {
+                 for (k = 3; k < 48; k++) {
                    int c = (mvinch(posy, k) & A_CHARTEXT);
-                   linha[k] = c;
+                   linha[k-3] = c;
                  }
 
 
@@ -364,8 +384,8 @@ int main(int argc, char **argv) {
                //scr_restore("bak");
                strcpy(linhaoriginal,linha);
                int k;
-               for (k = 0; k < 45; k++) {
-                   mvaddch(posy,k,linhaoriginal[k]);
+               for (k = 3; k < 48; k++) {
+                   mvaddch(posy,k,linhaoriginal[k-3]);
                }
                unlockline(posy,linhaoriginal);
                move(posy,posx);
@@ -383,24 +403,29 @@ int main(int argc, char **argv) {
             //condition ? consequence : alternative
            case KEY_UP:
               posy = (posy>3 && !edicao)?posy-1:posy;
+              move(posy,posx);
            break;
            case KEY_DOWN:
-              posy = (posy<(nrow-1) && !edicao)?posy+1:posy;
+              posy = (posy<((nrow+3)-1) && !edicao)?posy+1:posy;
+              move(posy,posx);
            break;
            case KEY_LEFT:
-              posx = (posx>0)?posx-1:posx;
+              posx = (posx>3)?posx-1:posx;
+              move(posy,posx);
            break;
            case KEY_RIGHT:
-              posx = (posx < (ncol-1))?posx+1:posx;
+              posx = (posx < ((ncol+2)))?posx+1:posx;
+              move(posy,posx);
            break;
            default :
            if(edicao == 1){
              mvaddch(posy,posx,ch); //move carater
-             if(posx<(ncol-1) && posx != (ncol-1)){
+             if(posx<(ncol+2) && posx != (ncol+2)){
                posx++;
              }  //
              else{
-               posx = ncol-1;
+               posx = ncol+2;
+
                //posy++;
              }
              move(posy,posx);
@@ -409,8 +434,8 @@ int main(int argc, char **argv) {
          }
          if(ch==KEY_UP || ch==KEY_DOWN|| ch==KEY_LEFT|| ch==KEY_RIGHT){
            move(posy,posx);
-           mvwprintw(uiWindow,nrow - 5,(ncol/2)-3, "(%d,%d) ",posy,posx);
-           wrefresh(uiWindow);
+           mvwprintw(notificacaoWindow,2,(ncol/2)-3, "(%d,%d) ",posy-3,posx-3);
+           wrefresh(notificacaoWindow);
          }
        }
        while (posy!=(nrow-1) || posx!=(ncol-1));

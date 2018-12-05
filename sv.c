@@ -30,6 +30,7 @@ void sair(int s){// manda sinal para os clientes online a avisar que vai encerra
     }
   }
 unlink(FIFO_SER);
+kill(childpid,SIGINT);
 exit(0);
 }
 
@@ -45,13 +46,6 @@ int broadcastficheiro(char *nomefich,int piduser){
       return 0;
     }
     while (fgets(line,46, fp)!=NULL) {
-    /*  for(j=0;j<45;j++){
-        if(line[j] =='\n'){
-          line[j] = ' ';
-        }
-      }
-      line[45] = '\0';*/
-
       for(i=0;i<5;i++){
         if(usersOnline[i].userPid == piduser){
           strcpy(p.linha,line);
@@ -61,7 +55,7 @@ int broadcastficheiro(char *nomefich,int piduser){
           fd_cli = open(fifo_nome,O_WRONLY);
           n = write(fd_cli, &p, sizeof(PEDIDO));
           close(fd_cli);
-          usleep(50000);
+          usleep(25000);
           printf("%s\n", p.linha);
           strcpy(p.linha,"                                             ");
           printf("[broadcast]Enviei o sinal SIGUSR2 ao pid %d [%s])\n",usersOnline[i].userPid,usersOnline[i].user);
@@ -73,36 +67,25 @@ int broadcastficheiro(char *nomefich,int piduser){
 
 int aspell(char *teste){
   int canal[2],canal2[2];
-  int status;
   char readbuffer[200];
   int childpid;
   pipe(canal);
   pipe(canal2);
   /*if((childpid = fork()) == -1){
       perror("fork");
-      fprintf(stderr,"caputou %d\n", getpid());
       exit(1);
   }*/
   if((childpid = fork()) == 0){//fecha canal de stdin e faz copia de stdin para canal[0]
     fprintf(stderr,"isto e o filho %d\n", getpid());
     dup2(canal2[1],1);//trocar stdout do aspell para o canal2
     dup2(canal[0],0); //trocar stdin do aspell para o canal
-    execlp("aspell","aspell","list",NULL);
-    //read canal2[] no pai
+    execlp("aspell","aspell","-a",NULL);
     exit(0);
   }
   else{//fecha stdout e mete o stdout no canal2[1]<<<<
-    fprintf(stderr,"isto e o pai %d\n", getpid());
-    sleep(2);
-    fprintf(stderr,"isto e o pai %d\n", getpid());
-    write(canal[1],teste,sizeof(teste));//write canal[1]
-    fprintf(stderr,"isto e o pai %d\n", getpid());
-    close(canal2[1]);
-    wait(&status);
-    fprintf(stderr,"isto e o pai %d\n", getpid());
-    //dup2(canal2([1]),1);//questional isto<<<<
-    /* Read in a string from the pipe */
+    write(canal[1],teste,strlen(teste));//write canal[1]
     int nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
+    readbuffer[nbytes] = '\0';
     printf("Received string: %d [%s]", nbytes,readbuffer);
   }
 }
@@ -116,61 +99,28 @@ int gravanoficheiro(char *nomefich,char *linha, int linhaPoxy){
   linhaPoxy -=3;
   fp1=fopen(nomefich,"r");
   fp2=fopen("bak2","w");
-  //fgetpos(fp, &position);
   int i=0;
   char line[46];
-/*  while ((c=fgetc(fp))!=EOF) {
-    if(c==EOF && (i < linhaPoxy)){
-      fprintf(fp,"\n");
+  while ((ret = fgets(line,46, fp1))!=NULL) {
+    if(i!=linhaPoxy){ //caso normal copia simples
+        fprintf(fp2,"%s",line);
     }
-
-
-    if(c == '\n'){
-      i++;
-      fsetpos(fp, &position);
+    else{ //é a linha que queremos
+        fprintf(fp2,"%s",linha);
     }
-    if(i == linhaPoxy){
-      fgetpos(fp, &position);
-      fprintf(fp,"%s\n",linha);
+    i++;
+    fgetpos(fp1, &position);
+  }
+  if(ret == NULL && i<linhaPoxy){
+    int j;
+    for(j=0;j<(linhaPoxy - i);j++){
+      fprintf(fp2,"\n");
     }
-  }*/
-
-while ((ret = fgets(line,46, fp1))!=NULL) {
-
-  if(i!=linhaPoxy){ //caso normal copia simples
-      fprintf(fp2,"%s",line);
+    fprintf(fp2,"%s",linha);
   }
-  else{ //é a linha que queremos
-      fprintf(fp2,"%s",linha);
-  }
-  i++;
-  fgetpos(fp1, &position);
-}
-/*
-9
-10awdawdawdaw
-11
-12knvkrdnlg
-*/
-
-if(ret == NULL && i<linhaPoxy){
-  int j;
-//  i--;
-  for(j=0;j<(linhaPoxy - i);j++){
-    fprintf(fp2,"\n");
-
-  }
-  fprintf(fp2,"%s",linha);
-}
-
-
- /*fseek(fp, 45*linhaPoxy, 1);
- fprintf(fp,"%s\n",linha);*/
-
-
   fclose (fp1);
   fclose (fp2);
-  rename("bak2","texto.txt");
+  rename("bak2",nomefich);
   return 1;
 }
 
@@ -249,45 +199,54 @@ int checauser(char *nomefich,char *username){ //1 se tiver o username no ficheir
    return 0;
   }
     char line[10];
-
     printf("\nusername[%s]\n",username);
-
     while (fgets(line,10, fp)!=NULL) {
-
       int i;
       for(i=0;i<9;i++){
         if(line[i]=='\n'){
           line[i]='\0';
         }
       }
-
         printf("\nlinha[%s]",line );
-
-
         if(strcmp(line,username)==0)
           {
             printf("User ja registado na base de dados\n");
             check=1;
             break;
           }
-
     }
     fclose(fp);
     return check;
 }
 
 int main(int argc, char *argv[],char *envp[]) {
-  //char usersOnline[9][9];//max de 9 users  cada um com 8+1 caracteres
-  //char pidUsersOnline[9];
-  char comando[20],nomefich[30];
+  char comando[20],nomefich[30],ficheiroEdit[30];
   int n,opt,done=0;
   int fd_lixo,fd_ser, res,fd_cli,maxusers=5;
   char fifo_nome[20],str[20];
   fd_set fontes;
   PEDIDO p;
+  int canal[2],canal2[2];
+  char readbuffer[200],*token;
+  const char s[2] = " ";
+  int childpid;
+  pipe(canal);
+  pipe(canal2);
 
   signal(SIGINT,sair);
-
+  if((childpid = fork()) == -1){
+      perror("fork");
+      exit(1);
+  }
+  if(childpid  == 0){//fecha canal de stdin e faz copia de stdin para canal[0]
+    fprintf(stderr,"filho %d com pai %d\n", getpid(), getppid());
+    dup2(canal2[1],1);//trocar stdout do aspell para o canal2
+    dup2(canal[0],0); //trocar stdin do aspell para o canal
+    execlp("aspell","aspell","-a",NULL);
+    exit(0);
+  }
+  else{
+    sleep(1);
   //char *smaxusers = getenv("MEDIT_MAXUSERS");
   char *nrows = getenv("MEDIT_MAXLINES");
   char *ncols = getenv("MEDIT_MAXCOLUMNS");
@@ -302,7 +261,7 @@ int main(int argc, char *argv[],char *envp[]) {
   //maxusers = atoi(smaxusers);
 
 
-  int i;
+  int i,a=0;
   for(i=0;i<maxusers;i++){
     usersOnline[i].userPid= -1;
     usersOnline[i].editinglineN = -1;
@@ -316,18 +275,29 @@ int main(int argc, char *argv[],char *envp[]) {
     fprintf(stderr, "[ERRO] Ja ha um SERVIDOR\n");
     exit(1);
   }
-
-
-    while((opt=getopt(argc,argv,"hf:")) >0 ){
+    while((opt=getopt(argc,argv,"hdf:")) >0 ){
       switch ( opt ) {
           case 'h': /* help */
               show_help(argv[0]) ;
               break ;
-          case 'f': /* opção -f */
+          case 'd': /* opção -f */
               strcpy(nomefich,optarg);
               printf("leficheiro: %s\n", nomefich);
               done=leficheiro(nomefich);
               break ;
+          case 'f': /* opção -f */
+              strcpy(ficheiroEdit,optarg);
+              //printf("leficheiro: %s\n", nomefich);
+              do{
+                if(leficheiro(ficheiroEdit)!=1){
+                  printf("erro ao abrir ficheiro %s\n nome do ficheiro:",ficheiroEdit);
+                  scanf("%s",ficheiroEdit);
+                }
+                else{
+                  a=1;
+                }
+              }while(a!=1);
+          break ;
           default:
               fprintf(stderr, "Opcao invalida ou falta argumento: `%c'\n", optopt);
               return -1 ;
@@ -373,15 +343,22 @@ int main(int argc, char *argv[],char *envp[]) {
               load(nomefich,nrow);
            }
           if(strcmp("save",str)==0){
-            printf("save");
+
+            printf("Insira nome do ficheiro a guardar\n");
+            scanf("%s\n",nomefich);
+            //gravanoficheiro(nomefich,)
+
           }
           if(strcmp("free",str)==0){
+
             printf("free");
           }
           if(strcmp("statistics",str)==0){
+
             printf("statistics");
           }
           if(strcmp("users",str)==0){
+
             printf("users");
           }
           if(strcmp("text",str)==0){
@@ -396,6 +373,7 @@ int main(int argc, char *argv[],char *envp[]) {
         int ret = 0;
         int i = 0;
         int pidtosend = 0;
+
         switch (p.tipo) {
           case 1:
             //login
@@ -492,9 +470,18 @@ int main(int argc, char *argv[],char *envp[]) {
                 break;
               }
             }
-
+            /*------------------escrever no canal do filho e analisar -------------------------*/
+            token = strtok(p.linha, s);
+            while( token != NULL ) {
+              write(canal[1],token,strlen(token));//write canal[1]
+              token = strtok(NULL, s);
+              int nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
+              readbuffer[nbytes] = '\0';
+              printf("Received string: %d [%s]: \n", nbytes,readbuffer);
+            }
+            /*------------------escrever no canal do filho e analisar-------------------------*/
             //gravar a nova linha no ficheiro
-            if(gravanoficheiro("texto.txt",p.linha,p.linhaPoxy)==1){
+            if(gravanoficheiro(ficheiroEdit,p.linha,p.linhaPoxy)==1){
               printf("alteracao da linha %d efetuada com exito\n",p.linhaPoxy);
             }
             else{
@@ -530,4 +517,5 @@ int main(int argc, char *argv[],char *envp[]) {
 
 
     exit(0);
+  }
   }
