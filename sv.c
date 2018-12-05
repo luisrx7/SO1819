@@ -11,7 +11,7 @@
 
 
 CLIENTE usersOnline[5];
-
+int childpid;
 
 void show_help(char *name) {
     fprintf(stderr, "\
@@ -71,10 +71,6 @@ int aspell(char *teste){
   int childpid;
   pipe(canal);
   pipe(canal2);
-  /*if((childpid = fork()) == -1){
-      perror("fork");
-      exit(1);
-  }*/
   if((childpid = fork()) == 0){//fecha canal de stdin e faz copia de stdin para canal[0]
     fprintf(stderr,"isto e o filho %d\n", getpid());
     dup2(canal2[1],1);//trocar stdout do aspell para o canal2
@@ -229,7 +225,6 @@ int main(int argc, char *argv[],char *envp[]) {
   int canal[2],canal2[2];
   char readbuffer[200],*token;
   const char s[2] = " ";
-  int childpid;
   pipe(canal);
   pipe(canal2);
 
@@ -399,9 +394,6 @@ int main(int argc, char *argv[],char *envp[]) {
                 }
               }
             }
-            //checkar na tabela de users ligados
-            //se tiver o user tiver desligado p.valid = 1 e adicionamos o user e o pid so cliente que pediu a resposta á tabela de users ligados
-            //se tiver ligado p.valid = 2
             sprintf(fifo_nome,FIFO_CLI,p.remetente);
             p.remetente = getpid();
             p.tipo =1;
@@ -427,11 +419,8 @@ int main(int argc, char *argv[],char *envp[]) {
             }
 
           }
-
           break;
-
           case 3: //lockline
-
             ret = 1;
             for(i=0;i<maxusers;i++){
               if(usersOnline[i].editinglineN==p.linhaPoxy){// se a linha ja tiver a ser editada
@@ -470,15 +459,21 @@ int main(int argc, char *argv[],char *envp[]) {
                 break;
               }
             }
+
             /*------------------escrever no canal do filho e analisar -------------------------*/
+            //    POR FAZER
+            /*
             token = strtok(p.linha, s);
             while( token != NULL ) {
+              token[strlen(token)]='\n';
               write(canal[1],token,strlen(token));//write canal[1]
               token = strtok(NULL, s);
               int nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
               readbuffer[nbytes] = '\0';
+              //tratar o read
               printf("Received string: %d [%s]: \n", nbytes,readbuffer);
             }
+            */
             /*------------------escrever no canal do filho e analisar-------------------------*/
             //gravar a nova linha no ficheiro
             if(gravanoficheiro(ficheiroEdit,p.linha,p.linhaPoxy)==1){
@@ -487,7 +482,6 @@ int main(int argc, char *argv[],char *envp[]) {
             else{
               printf("alteracao da linha %d efetuada sem exito\n",p.linhaPoxy);
             }
-
             printf("broadcast da nova linha\n");
             for(i=0;i<5;i++){
               if(usersOnline[i].userPid !=-1 && usersOnline[i].userPid != p.remetente){
@@ -500,7 +494,6 @@ int main(int argc, char *argv[],char *envp[]) {
               }
             }
             printf("%s\n", p.linha);
-
           break;
 
           default:
@@ -509,7 +502,6 @@ int main(int argc, char *argv[],char *envp[]) {
         }
         printf("Recebi %d bytes...[]\n",n);
         printf("Comando:" ); fflush(stdout);
-
       }
     }while(1);
     close(fd_ser);
