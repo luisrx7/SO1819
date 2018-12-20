@@ -225,10 +225,11 @@ int main(int argc, char *argv[],char *envp[]) {
   int canal[2],canal2[2];
   char readbuffer[200],*token;
   const char s[2] = " ";
-  pipe(canal);
+signal(SIGINT,sair);
+/*  pipe(canal);
   pipe(canal2);
 
-  signal(SIGINT,sair);
+  
   if((childpid = fork()) == -1){
       perror("fork");
       exit(1);
@@ -241,9 +242,11 @@ int main(int argc, char *argv[],char *envp[]) {
     exit(0);
   }
   else{
-    sleep(1);
-  //char *smaxusers = getenv("MEDIT_MAXUSERS");
-  char *nrows = getenv("MEDIT_MAXLINES");
+   
+ sleep(1);
+*/  //char *smaxusers = getenv("MEDIT_MAXUSERS");
+ 
+ char *nrows = getenv("MEDIT_MAXLINES");
   char *ncols = getenv("MEDIT_MAXCOLUMNS");
   char *nomeficheiro = getenv("MEDIT_FICH");
   if(nomeficheiro == NULL || nrows == NULL || ncols == NULL){
@@ -509,5 +512,5 @@ int main(int argc, char *argv[],char *envp[]) {
 
 
     exit(0);
-  }
+  
   }
