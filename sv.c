@@ -364,6 +364,26 @@ int main(int argc, char *argv[],char *envp[]) {
 					aspell(pal);
 					printf(pal);
 				}
+
+				if(strcmp("broadcast",str)==0){
+	p.carater = 'F';
+	p.linhaPoxx = 5;
+	p.linhaPoxy = 5;
+					printf("[broadcast] **char:%d[%d,%d]\t", p.carater,p.linhaPoxx,p.linhaPoxy);
+
+					for(i=0;i<5;i++){
+						if(usersOnline[i].userPid !=-1){
+							//kill(usersOnline[i].userPid,SIGUSR2);
+							sprintf(fifo_nome,FIFO_CLI,usersOnline[i].userPid);
+							fd_cli = open(fifo_nome,O_WRONLY);
+							n = write(fd_cli, &p, sizeof(PEDIDO));
+							close(fd_cli);
+							printf("[%d].",i);
+						}
+					}
+					printf("\n");
+					printf("[broadcast] **fim\n");
+				}
 				printf("Comando:" ); fflush(stdout);
 			}
 			if(res>0 && FD_ISSET(fd_ser,&fontes)){ //pelo pipe
@@ -537,5 +557,4 @@ int main(int argc, char *argv[],char *envp[]) {
 
 		exit(0);
 
-	}
 	}

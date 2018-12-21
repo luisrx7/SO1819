@@ -281,7 +281,7 @@ int main(int argc, char **argv) {
     wrefresh(notificacaoWindow);
     wrefresh(lnWindow);
 
-    nodelay(stdscr,true);
+    //nodelay(stdscr,true);
     //getmaxyx(stdscr,nrow,ncol);
     posx = ncol/2;
     posy = nrow/2;
@@ -297,8 +297,8 @@ int main(int argc, char **argv) {
     PEDIDO p;
     sprintf(fifo_nome,FIFO_CLI,getpid());
     mkfifo(fifo_nome,0600);
-    fd_ser = open(fifo_nome,O_RDONLY);
-    fd_lixo = open(fifo_nome,O_WRONLY);//impedir que fique em espera de um cliente
+    fd_cli = open(fifo_nome,O_RDONLY);
+    fd_lixo = open(fifo_nome,O_WRONLY);//impedir que fique em espera
 
     do{
 
@@ -358,11 +358,11 @@ int main(int argc, char **argv) {
                 }*/
             }
 
-            if(res>0 && FD_ISSET(0,&fontes)){   //teclado
-                do{
+        if(res>0 && FD_ISSET(0,&fontes)){   //teclado
+                //do{
                     ch = getch();
-                }
-                while(ch == ERR);
+                //}
+                //while(ch == ERR);
 
 
 
@@ -471,7 +471,7 @@ int main(int argc, char **argv) {
                         p.linhaPoxy = posy;
                         p.carater = ch;
 
-                        fd_ser = open (FIFO_SER,O_WRONLY);
+                        fd_ser = open(FIFO_SER,O_WRONLY);
                         n=write(fd_ser,&p,sizeof(PEDIDO));
                         printf("Foi enviado ao serv o char:%d[%d,%d] %s\t", ch,posx,posy);
 
@@ -493,7 +493,7 @@ int main(int argc, char **argv) {
                 if(ch==KEY_UP || ch==KEY_DOWN|| ch==KEY_LEFT|| ch==KEY_RIGHT){
                     move(posy,posx);
                     mvwprintw(notificacaoWindow,2,(ncol/2)-3, "(%d,%d) ",posy-3,posx-3);
-                    wrefresh(notificacaoWindow);
+                    wrefresh(stdscr);
                 }
             }
         }
