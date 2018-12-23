@@ -84,7 +84,7 @@ int aspell(char *teste){
 		fprintf(stderr,"isto e o filho %d\n", getpid());
 		dup2(canal2[1],1);//trocar stdout do aspell para o canal2
 		dup2(canal[0],0); //trocar stdin do aspell para o canal
-		execlp("aspell","aspell","-a",NULL);
+		execlp("aspell","aspell","list",NULL);
 		exit(0);
 	}
 	else{//fecha stdout e mete o stdout no canal2[1]<<<<
@@ -536,31 +536,39 @@ int main(int argc, char *argv[],char *envp[]) {
 
 					/*------------------escrever no canal do filho e analisar -------------------------*/
 					//    POR FAZER
-/*
+
 					int limpa=0;
 					int nbytes;
 					printf("Received string //teste: [%s]: \n",p.linha);
+					p.linha[strlen(p.linha)]='\n';
+					printf("Received string //teste: [%s]: \n",p.linha);
 					token = strtok(p.linha, s);
 					while( token != NULL ) {
+						printf("Enviei [%s]: \n",token);
 						token[strlen(token)]='\n';
 						write(canal[1],token,strlen(token));//write canal[1]
+/*
 						token = strtok(NULL, s);
 						if(limpa==0){
-						nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
-						limpa=1;
+							nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
+							limpa=1;
+							memset( readbuffer,0,strlen(readbuffer));
 						}
 						nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
 						if(nbytes==1){
+							memset( readbuffer,0,strlen(readbuffer));
 							nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
 						}
-						readbuffer[nbytes-1] = '\0';
+						readbuffer[strlen(readbuffer)] = '\0';
 						//tratar o read
 						if(nbytes>2){
 
 						}
 						printf("Received string: %d [%s]: \n", nbytes,readbuffer);
+						memset( readbuffer,0,strlen(readbuffer));
+						*/
 					}
-					printf("//teste fim: \n");*/
+					printf("//teste fim: \n");
 					/*------------------escrever no canal do filho e analisar-------------------------*/
 					//gravar a nova linha no ficheiro
 

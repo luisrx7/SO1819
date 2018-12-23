@@ -433,7 +433,7 @@ int main(int argc, char **argv) {
                         wprintw(notificacaoWindow,"Modo de navegação no texto");
                         int k;
                         for (k = 0; k < 45; k++) {
-                            int c = (mvwinch(uiWindow,posy, k) & A_CHARTEXT);
+                            int c = (mvwinch(uiWindow,posy-3, k) & A_CHARTEXT);
                             linha[k] = c;
                         }
                         unlockline(posy,linha);
