@@ -91,6 +91,8 @@ int logout(){
     fd_ser = open (FIFO_SER,O_WRONLY);
     n=write(fd_ser,&p,sizeof(PEDIDO));
     printf("Foi enviado logout\n");
+    sprintf(fifo_nome,FIFO_CLI,getpid());
+    unlink(fifo_nome);
     exit(1);
 }
 
@@ -362,7 +364,7 @@ int main(int argc, char **argv) {
             }
 
             else{
-              mvwaddch(uiWindow,p.linhaPoxy,p.linhaPoxx,p.carater);
+              mvwaddch(uiWindow,p.linhaPoxy-3,p.linhaPoxx-3,p.carater);
               move(posy,posx);
               refresh();
               wrefresh(uiWindow);

@@ -241,7 +241,7 @@ int main(int argc, char *argv[],char *envp[]) {
 	char readbuffer[200],*token;
 	const char s[2] = " ";
 	signal(SIGINT,sair);
-	/*  pipe(canal);
+	  pipe(canal);
 	pipe(canal2);
 
 
@@ -259,7 +259,7 @@ int main(int argc, char *argv[],char *envp[]) {
 	else{
 
 		sleep(1);
-		*/  //char *smaxusers = getenv("MEDIT_MAXUSERS");
+		  //char *smaxusers = getenv("MEDIT_MAXUSERS");
 
 		char *nrows = getenv("MEDIT_MAXLINES");
 		char *ncols = getenv("MEDIT_MAXCOLUMNS");
@@ -520,18 +520,34 @@ int main(int argc, char *argv[],char *envp[]) {
 
 					/*------------------escrever no canal do filho e analisar -------------------------*/
 					//    POR FAZER
-					/*
+
+					int limpa=0;
+					int nbytes;
+					printf("Received string //teste: [%s]: \n",p.linha);
 					token = strtok(p.linha, s);
 					while( token != NULL ) {
 						token[strlen(token)]='\n';
 						write(canal[1],token,strlen(token));//write canal[1]
 						token = strtok(NULL, s);
-						int nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
-						readbuffer[nbytes] = '\0';
+						if(limpa==0){
+						nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
+						limpa=1;
+						}
+						while(nbytes = read(canal2[0], readbuffer, sizeof(readbuffer)));//continuar a ler até ter obter do aspell o desejado
+						/*
+						nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
+						if(nbytes==1){
+							nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
+						}
+						*/
+						//readbuffer[nbytes-1] = '\0';
 						//tratar o read
+						if(nbytes>2){
+
+						}
 						printf("Received string: %d [%s]: \n", nbytes,readbuffer);
 					}
-					*/
+					printf("//teste fim: \n");
 					/*------------------escrever no canal do filho e analisar-------------------------*/
 					//gravar a nova linha no ficheiro
 
@@ -597,5 +613,5 @@ int main(int argc, char *argv[],char *envp[]) {
 
 
 		exit(0);
-
+}
 	}
