@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include<sys/wait.h>
+#include <ctype.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
@@ -34,12 +35,12 @@ void sair(int s){// manda sinal para os clientes online a avisar que vai encerra
 	exit(0);
 }
 
-int broadcastficheiro(char *nomefich,int piduser){
+int broadcastficheiro(char *nomefich,int piduser,int ncol){
 	FILE *fp;
 	char fifo_nome[20];
 	fp=fopen(nomefich,"r");
 	char line[45];
-	int i,n,fd_cli,nl=3,j;
+	int i,n,fd_cli,nl=0,j;
 	PEDIDO p;
 	if(fp==NULL) {
 		printf("1:Erro ao abrir ficheiro %s\n",nomefich);
@@ -49,21 +50,24 @@ int broadcastficheiro(char *nomefich,int piduser){
 		for(i=0;i<5;i++){
 			if(usersOnline[i].userPid == piduser){
 				strcpy(p.linha,line);
-				p.linhaPoxy = nl;
 				//kill(usersOnline[i].userPid,SIGUSR2);
 				sprintf(fifo_nome,FIFO_CLI,usersOnline[i].userPid);
 				fd_cli = open(fifo_nome,O_WRONLY);
 				for ( i = 0; i < ncol; i++) {
-					p.pedido = 5;
-					p.carater = p.linha[i];
-					p.linhaPosy = nl;
-					p.linhaPosx = i;
-					n = write(fd_cli, &p, sizeof(PEDIDO));
-			}
+					if(isalnum(p.linha[i])!=0){
+						p.remetente = getpid();
+						p.tipo = 5;
+						p.carater = p.linha[i];
+						p.linhaPoxy = nl;
+						p.linhaPoxx = i;
+						n = write(fd_cli, &p, sizeof(PEDIDO));
+					}
+				}
 				close(fd_cli);
-				printf("%s\n", p.linha);
-				strcpy(p.linha,"");
-				printf("[broadcast]Enviei o sinal SIGUSR2 ao pid %d [%s])\n",usersOnline[i].userPid,usersOnline[i].user);
+				printf("%s", p.linha);
+				//strcpy(p.linha,"");
+				memset( p.linha,0,strlen( p.linha));
+				//printf("[broadcast]Enviei o sinal SIGUSR2 ao pid %d [%s])\n",usersOnline[i].userPid,usersOnline[i].user);
 			}
 		}
 		nl++;
@@ -126,15 +130,12 @@ int gravanoficheiro(char *nomefich,char *linha, int linhaPoxy){
 }
 
 int leficheiro(char *nomefich){ //1 se ler   0 se nao
-	FILE *fp;
-	fp=fopen(nomefich,"rt");
-	if(fp==NULL) {
-		printf("2:Erro ao abrir ficheiro %s\n",nomefich);
-		return 0;
+	if(access( nomefich, F_OK ) != -1 ) {
+		return 1;
 	}
 	else{
-		fclose(fp);
-		return 1;
+		printf("2:Erro ficheiro [%s] nao existe\n",nomefich);
+		return 0;
 	}
 /*
 char * line = NULL;
@@ -217,10 +218,10 @@ do{
 				line[i]='';
 		}
 	}*/
-	printf("\nlinha[%s]\n",line );
+	//printf("\nlinha[%s]\n",line );
 	if(strcmp(line,username)==0)
 	{
-		printf("User ja registado na base de dados\n");
+		//printf("User registado na base de dados\n");
 		check=1;
 		break;
 	}
@@ -406,6 +407,7 @@ int main(int argc, char *argv[],char *envp[]) {
 				int ret = 0;
 				int i = 0;
 				int pidtosend = 0;
+				//char usernameLOCK[9];
 
 				switch (p.tipo) {
 					case 1:
@@ -416,15 +418,15 @@ int main(int argc, char *argv[],char *envp[]) {
 					if(ret == 1){
 						for(i=0;i<maxusers;i++){
 							if(strcmp(usersOnline[i].user,p.username)==0){// se tiver ja logado na tabela de clientes
-								printf("O user: %d fez login.\n",usersOnline[i].user);
 								ret = 2;
 								break;
 							}
 						}
 						if(ret == 1){ //senao tiver logado adiciona a lista de users online
 							for(i=0;i<maxusers;i++){
-								if(strcmp(usersOnline[i].user,"NULL")==0){// se tiver ja logado
+								if(strcmp(usersOnline[i].user,"NULL")==0){
 									strcpy(usersOnline[i].user,p.username);
+									printf("O user: %s fez login.\n",usersOnline[i].user);
 									usersOnline[i].userPid = p.remetente;
 									pidtosend = p.remetente;
 									break;
@@ -443,7 +445,7 @@ int main(int argc, char *argv[],char *envp[]) {
 					printf("Foi enviado %d bytes em resposta ao user \n",n);
 					if(ret == 1){
 						usleep(700000);
-						//broadcastficheiro("texto.txt",pidtosend);
+						broadcastficheiro(ficheiroEdit,pidtosend,ncol);
 					}
 					break;
 					case 2://logout
@@ -464,15 +466,16 @@ int main(int argc, char *argv[],char *envp[]) {
 						if(usersOnline[i].editinglineN==p.linhaPoxy){// se a linha ja tiver a ser editada
 							printf("O user: %s tem  a linha %d bloqueada.\n",usersOnline[i].user,p.linhaPoxy);
 							ret = 0;
-							strcpy(p.username,usersOnline[i].user);
+							//strcpy(p.username,usersOnline[i].user);
 							break;
 						}
 					}
-					if(ret == 1){ //senao tiver locked bloqueia e responde ao user a dizer que pode editar
+					if(ret == 1){ //senao tiver locked bloqueia e responde ao user a dizer que pode editare
 						for(i=0;i<maxusers;i++){
 							if(strcmp(usersOnline[i].user,p.username)==0){ //encontra user na tabela
 								usersOnline[i].editinglineN = p.linhaPoxy;
 								printf("O user: %s bloqueou a linha %d.\n",usersOnline[i].user,p.linhaPoxy);
+								//strcpy(usernameLOCK,usersOnline[i].user);
 							}
 						}
 					}
@@ -484,7 +487,24 @@ int main(int argc, char *argv[],char *envp[]) {
 					fd_cli = open (fifo_nome,O_WRONLY);
 					n=write(fd_cli,&p,sizeof(PEDIDO));
 					close(fd_cli);
-					printf("Foi enviado %d bytes em resposta ao pedido de lockline \n",n);
+
+					/*	 manda para todos os users o novo bloqueio de linha	*/
+					if(ret == 1){
+						for(i=0;i<maxusers;i++){
+								sprintf(fifo_nome,FIFO_CLI,usersOnline[i].userPid);
+								fd_cli = open(fifo_nome,O_WRONLY);
+								p.remetente = getpid();
+								p.tipo = 3;
+								//strcpy(p.username,usernameLOCK);
+
+								write(fd_cli, &p, sizeof(PEDIDO));
+
+								close(fd_cli);
+						}
+					}
+
+
+					//printf("Foi enviado %d bytes em resposta ao pedido de lockline \n",n);
 
 					break;
 					case 4: //unlockline
@@ -515,13 +535,13 @@ int main(int argc, char *argv[],char *envp[]) {
 					/*------------------escrever no canal do filho e analisar-------------------------*/
 					//gravar a nova linha no ficheiro
 
-					if(gravanoficheiro(ficheiroEdit,p.linha,p.linhaPoxy)==1){
+					/*if(gravanoficheiro(ficheiroEdit,p.linha,p.linhaPoxy)==1){
 						printf("alteracao da linha %d efetuada com exito\n",p.linhaPoxy);
 					}
 					else{
 						printf("alteracao da linha %d efetuada sem exito\n",p.linhaPoxy);
-					}
-					printf("broadcast da nova linha\n");
+					}*/
+					/*printf("broadcast da nova linha\n");
 					for(i=0;i<5;i++){
 						if(usersOnline[i].userPid !=-1){
 							//kill(usersOnline[i].userPid,SIGUSR2);
@@ -536,7 +556,7 @@ int main(int argc, char *argv[],char *envp[]) {
 							close(fd_cli);
 							printf("Enviei o sinal SIGUSR2 ao pid %d [%s])\n",usersOnline[i].userPid,usersOnline[i].user);
 						}
-					}
+					}*/
 					printf("%s\n", p.linha);
 					break;
 

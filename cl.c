@@ -26,7 +26,7 @@ int checkuser(char *username){
     strcpy(p.username,username);
     fd_ser = open (FIFO_SER,O_WRONLY);
     n=write(fd_ser,&p,sizeof(PEDIDO));
-    printf("Foi enviado %s\t",username);
+    //printf("Foi enviado %s\t",username);
 
     //ler resposta do servidor
     sprintf(fifo_nome,FIFO_CLI,getpid());
@@ -34,7 +34,7 @@ int checkuser(char *username){
     fd_cli=open(fifo_nome,O_RDONLY);
     n=read(fd_cli,&p,sizeof(PEDIDO));
     close(fd_cli);
-    printf("Recebi valid =  %d\n\n",p.valid);
+    //printf("Recebi valid =  %d\n\n",p.valid);
     return p.valid;
 
 }
@@ -180,6 +180,7 @@ int main(int argc, char **argv) {
     WINDOW * uiWindow;
     WINDOW * notificacaoWindow;
     WINDOW * lnWindow;
+    WINDOW * usersWindow;
 
     char *nrows = getenv("MEDIT_MAXLINES");
     char *ncols = getenv("MEDIT_MAXCOLUMNS");
@@ -198,7 +199,7 @@ int main(int argc, char **argv) {
             case 'u':
             strncpy(username,optarg,8);
             username[8]='\0'; //poe \0 no ultimo elemento
-            puts(username);
+            //puts(username);
             uFARg = 1;
 
             break ;
@@ -225,17 +226,17 @@ int main(int argc, char **argv) {
         }while(strlen(username)>8);
         printf("utilizador: %s ",username);
         int ret = checkuser(username);
-        printf("return de checkuser %d\n",ret );
+        //printf("return de checkuser %d\n",ret );
         if( ret == 1){
-            printf("\nvalido\n");
+            printf("Valido\n");
             skip = 1;
         }
         else if( ret == 2){
-            printf("\nJa em uso\n");
+            printf("Ja em uso\n");
             uFARg = 0;
         }
         else{
-            printf("\ninvalido\n");
+            printf("Invalido\n");
             strcpy(username,"");
             uFARg = 0;
         }
@@ -266,11 +267,12 @@ int main(int argc, char **argv) {
 
     uiWindow = newwin(nrow+1,ncol,3,3);//linhas cols y x
     wbkgd(uiWindow, COLOR_PAIR(2));
-    scrollok(uiWindow,true);
 
     lnWindow = newwin(nrow+1,3,3,0);//linhas cols y x
     wbkgd(lnWindow, COLOR_PAIR(1));
-    scrollok(lnWindow,true);
+
+    usersWindow = newwin(nrow+1,9,3,ncol+3);//linhas cols y x
+    wbkgd(usersWindow, COLOR_PAIR(1));
 
     wrefresh(lnWindow);
     /*shortcutsWindow = newwin(4,75,18,0);
@@ -341,22 +343,29 @@ int main(int argc, char **argv) {
             /************lê do seu pipe************/
             n=read(fd_cli,&p,sizeof(PEDIDO));
 
-            if(p.carater == 8){ //backspace
+            if(p.carater == 8 && p.tipo == 5){ //backspace
               move(p.linhaPoxy,p.linhaPoxx);
               delch();
               move(posy,posx);
               //mvaddch(p.linhaPoxy,p.linhaPoxx,'|');
             }
-            if(p.carater == 9){//delete
+            if(p.carater == 9&& p.tipo == 5){//delete
               move(p.linhaPoxy,p.linhaPoxx);
               delch();
               move(posy,posx);
               //mvaddch(p.linhaPoxy,p.linhaPoxx,'|');
+            }
+            if(p.tipo == 3){//show locked line
+             mvwprintw(usersWindow,p.linhaPoxy,0,p.username);
+             refresh();
+             wrefresh(usersWindow);
             }
 
             else{
-              mvaddch(p.linhaPoxy,p.linhaPoxx,p.carater);
+              mvwaddch(uiWindow,p.linhaPoxy,p.linhaPoxx,p.carater);
               move(posy,posx);
+              refresh();
+              wrefresh(uiWindow);
             }
 /*
             //ler resposta do servidor
@@ -416,7 +425,7 @@ int main(int argc, char **argv) {
                         move(posy,posx);
                     }
                     else if(edicao == 1){  //edicao a 1      manda info para o serv para bloquear a linha
-                        if(lockline(posy)==1){
+                        if(lockline(posy-3)==1){
                             wprintw(notificacaoWindow,"Modo de edição da linha");
                             //scr_dump("bak");
                             strcpy(linha,""); // lim
@@ -473,7 +482,7 @@ int main(int argc, char **argv) {
                         //scr_restore("bak");
                         strcpy(linhaoriginal,linha);
                         int k;
-                        for (k = 0; k < 45; k++) {
+                        for (k = 0; k < ncol; k++) {
                           p.remetente = getpid();
                           p.tipo = 5;
                           p.linhaPoxx = k;
