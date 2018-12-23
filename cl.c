@@ -253,7 +253,7 @@ int main(int argc, char **argv) {
     start_color(); //Inicia funcionalidade das cores
     clear(); //limpa o ecra
     cbreak();// desliga o buffering do input
-    curs_set(2); //Trata da visibilidade do cursor (0-invisible,1- normal, 2-high visibilty)
+    curs_set(1); //Trata da visibilidade do cursor (0-invisible,1- normal, 2-high visibilty)
     noecho(); // Não haver echo das teclas
     keypad(stdscr,true);
     init_pair(1,COLOR_BLUE, COLOR_BLACK); //numero do par , cor texto , cor fundo
@@ -264,11 +264,11 @@ int main(int argc, char **argv) {
     notificacaoWindow = newwin(3,ncol,0,0);
     wbkgd(notificacaoWindow, COLOR_PAIR(1));
 
-    uiWindow = newwin(nrow-3,ncol,3,3);//linhas cols y x
+    uiWindow = newwin(nrow+1,ncol,3,3);//linhas cols y x
     wbkgd(uiWindow, COLOR_PAIR(2));
     scrollok(uiWindow,true);
 
-    lnWindow = newwin(nrow-3,3,3,0);//linhas cols y x
+    lnWindow = newwin(nrow+1,3,3,0);//linhas cols y x
     wbkgd(lnWindow, COLOR_PAIR(1));
     scrollok(lnWindow,true);
 
@@ -278,55 +278,98 @@ int main(int argc, char **argv) {
     wbkgd(shortcutsWindow, COLOR_PAIR(1));*/
 
     wrefresh(uiWindow);
-    wrefresh(notificacaoWindow);
-    wrefresh(lnWindow);
+
+
 
     //nodelay(stdscr,true);
     //getmaxyx(stdscr,nrow,ncol);
-    posx = ncol/2;
-    posy = nrow/2;
     wclear(notificacaoWindow);
     wclear(uiWindow);
-    mvwprintw(notificacaoWindow,0,0,"Modo de navegação no texto");
+    move(0,0);
+    wprintw(notificacaoWindow,"Modo de navegação no texto");
+    posx = ncol/2;
+    posy = nrow/2;
     move(posy,posx);
     // mvwprintw(uiWindow,3,(ncol/2)-3, "(%d,%d) ",posy-3,posx-3);
-    wrefresh(uiWindow);
-    wrefresh(notificacaoWindow);
+  /*  wrefresh(uiWindow);
+    wrefresh(notificacaoWindow);*/
+
+    int k=0,j=0;
+
+// imprime numero d linhas
+  for (j = 0; j < nrow; j++) {
+    for (k = 0; k < 3; k++) {
+        char SposNL[3];
+        sprintf(SposNL, "%d ", j);
+        SposNL[2] = '|';
+        mvwaddch(lnWindow,j,k,SposNL[k]);
+    }
+  }
+
+
+
+  refresh();
+  wrefresh(lnWindow);
+  wrefresh(notificacaoWindow);
+  wrefresh(uiWindow);
+
+    wrefresh(stdscr);
     int fd_ser,fd_lixo,n;
     char fifo_nome[20];
     PEDIDO p;
     sprintf(fifo_nome,FIFO_CLI,getpid());
     mkfifo(fifo_nome,0600);
-    fd_cli = open(fifo_nome,O_RDONLY);
+    fd_cli = open(fifo_nome,O_RDONLY | O_NONBLOCK);
     fd_lixo = open(fifo_nome,O_WRONLY);//impedir que fique em espera
+    fd_ser = open(FIFO_SER,O_WRONLY);
+
 
     do{
 
+        move(posy,posx);
+        wrefresh(stdscr);
         FD_ZERO(&fontes); // FD_ZERO() clears a set.
         FD_SET(0,&fontes); // add a given file descriptor from a set.
-
         FD_SET(fd_cli,&fontes);
         res = select(fd_cli+1,&fontes,NULL,NULL,NULL);
 
 
-        wrefresh(stdscr);
+
         if(res>0 && FD_ISSET(fd_cli,&fontes) ){ //pelo pipe
 
 
             /************lê do seu pipe************/
+            n=read(fd_cli,&p,sizeof(PEDIDO));
 
+            if(p.carater == 8){ //backspace
+              move(p.linhaPoxy,p.linhaPoxx);
+              delch();
+              move(posy,posx);
+              //mvaddch(p.linhaPoxy,p.linhaPoxx,'|');
+            }
+            if(p.carater == 9){//delete
+              move(p.linhaPoxy,p.linhaPoxx);
+              delch();
+              move(posy,posx);
+              //mvaddch(p.linhaPoxy,p.linhaPoxx,'|');
+            }
+
+            else{
+              mvaddch(p.linhaPoxy,p.linhaPoxx,p.carater);
+              move(posy,posx);
+            }
+/*
             //ler resposta do servidor
 
-            fd_cli=open(fifo_nome,O_RDONLY);
-            n=read(fd_cli,&p,sizeof(PEDIDO));
-            close(fd_cli);
+            //fd_cli=open(fifo_nome,O_RDONLY);
+//            close(fd_cli);
 
 
             //if(p.linhaPoxx!= -1){
 
-                mvaddch(p.linhaPoxy,p.linhaPoxx,p.carater); //move carater
+                 //move carater
                 //}
-                /*if(p.linhaPoxy!= -1){
+                if(p.linhaPoxy!= -1){
 
 
                     int k;
@@ -335,19 +378,13 @@ int main(int argc, char **argv) {
                     }
 
                     //escrever n linha
-                    char SposNL[3];
-                    sprintf(SposNL, "%d ", (posNL-3));
-                    SposNL[2] = ' ';
 
-                    for (k = 0; k < 3; k++) {
-                        mvaddch(posNL,k,SposNL[k]);
-                    }
 
                     /*
                     for (k = 0; k < 9; k++) { //escrever user
                         mvaddch(posNL,k+ncol+3+2,useraeditarlinha[k]);
-                    }*/
-                    /*
+                    }
+
                     //mvwprintw(lnWindow,posNL,0,c);
                     wrefresh(uiWindow);
                     wrefresh(lnWindow);
@@ -356,15 +393,11 @@ int main(int argc, char **argv) {
                     //printf("printou esta merda%s\n", linharecebida);
                     strcpy(linharecebida,"                                            ");
                 }*/
-            }
+        }
 
         if(res>0 && FD_ISSET(0,&fontes)){   //teclado
-                //do{
-                    ch = getch();
-                //}
-                //while(ch == ERR);
 
-
+                ch = getch();
 
                 switch (ch) {
                     case 10: // enter key modo de navegação
@@ -387,6 +420,9 @@ int main(int argc, char **argv) {
                             wprintw(notificacaoWindow,"Modo de edição da linha");
                             //scr_dump("bak");
                             strcpy(linha,""); // lim
+
+                            /*   backup da linha   */
+
                             int k;
                             for (k = 3; k < 48; k++) {
                                 int c = (mvinch(posy, k) & A_CHARTEXT);
@@ -405,15 +441,30 @@ int main(int argc, char **argv) {
                     break;
                     case KEY_BACKSPACE:
                     if(edicao==1){
-                        delch();
-                        if(posx >1)posx--;
-                        move(posy,posx);
+                      if(posx >1)posx--;
+                  /*    move(posy,posx);
+                        delch();*/
+
+
+                        p.remetente = getpid();
+                        p.tipo = 5;
+                        p.linhaPoxx = posx;
+                        p.linhaPoxy = posy;
+                        p.carater = 8;
+
+                        n=write(fd_ser,&p,sizeof(PEDIDO));
                     }
                     break;
                     case KEY_DC://faz delete dos chars no screen
                     if(edicao==1){
-                        delch();
+                      //  delch();
+                      p.remetente = getpid();
+                      p.tipo = 5;
+                      p.linhaPoxx = posx;
+                      p.linhaPoxy = posy;
+                      p.carater = 8;
 
+                      n=write(fd_ser,&p,sizeof(PEDIDO));
                     }
                     break;
                     case 27: //ESC cancela a edicao no modo de edicao de linha
@@ -422,8 +473,15 @@ int main(int argc, char **argv) {
                         //scr_restore("bak");
                         strcpy(linhaoriginal,linha);
                         int k;
-                        for (k = 3; k < 48; k++) {
-                            mvaddch(posy,k,linhaoriginal[k-3]);
+                        for (k = 0; k < 45; k++) {
+                          p.remetente = getpid();
+                          p.tipo = 5;
+                          p.linhaPoxx = k;
+                          p.linhaPoxy = posy;
+                          p.carater = linhaoriginal[k];
+
+                          n=write(fd_ser,&p,sizeof(PEDIDO));
+                            //mvwaddch(uiWindow,posy,k,linhaoriginal[k-3]);
                         }
                         unlockline(posy,linhaoriginal);
                         move(posy,posx);
@@ -463,17 +521,17 @@ int main(int argc, char **argv) {
                         //nao imprime para o ecra
                         //recebe do servidor e imprime
 
-                        p.remetente = getpid();
-                        p.tipo =5;
                         //strcpy(p.linha,linhatxt);
                         //strcpy(p.username,username);
+                        p.remetente = getpid();
+                        p.tipo = 5;
                         p.linhaPoxx = posx;
                         p.linhaPoxy = posy;
                         p.carater = ch;
 
-                        fd_ser = open(FIFO_SER,O_WRONLY);
+
                         n=write(fd_ser,&p,sizeof(PEDIDO));
-                        printf("Foi enviado ao serv o char:%d[%d,%d] %s\t", ch,posx,posy);
+                        //printf("Foi enviado ao serv o char:%d[%d,%d] %s\t", ch,posx,posy);
 
                         //mvaddch(posy,posx,ch); //move carater
 
@@ -495,7 +553,9 @@ int main(int argc, char **argv) {
                     mvwprintw(notificacaoWindow,2,(ncol/2)-3, "(%d,%d) ",posy-3,posx-3);
                     wrefresh(stdscr);
                 }
-            }
+            //}
+          }
+
         }
         while (posy!=(nrow-1) || posx!=(ncol-1));
         wgetch(uiWindow);

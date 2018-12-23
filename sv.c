@@ -42,7 +42,7 @@ int broadcastficheiro(char *nomefich,int piduser){
 	int i,n,fd_cli,nl=3,j;
 	PEDIDO p;
 	if(fp==NULL) {
-		printf("Erro ao abrir ficheiro %s\n",nomefich);
+		printf("1:Erro ao abrir ficheiro %s\n",nomefich);
 		return 0;
 	}
 	while (fgets(line,46, fp)!=NULL) {
@@ -50,14 +50,19 @@ int broadcastficheiro(char *nomefich,int piduser){
 			if(usersOnline[i].userPid == piduser){
 				strcpy(p.linha,line);
 				p.linhaPoxy = nl;
-				kill(usersOnline[i].userPid,SIGUSR2);
+				//kill(usersOnline[i].userPid,SIGUSR2);
 				sprintf(fifo_nome,FIFO_CLI,usersOnline[i].userPid);
 				fd_cli = open(fifo_nome,O_WRONLY);
-				n = write(fd_cli, &p, sizeof(PEDIDO));
+				for ( i = 0; i < ncol; i++) {
+					p.pedido = 5;
+					p.carater = p.linha[i];
+					p.linhaPosy = nl;
+					p.linhaPosx = i;
+					n = write(fd_cli, &p, sizeof(PEDIDO));
+			}
 				close(fd_cli);
-				usleep(25000);
 				printf("%s\n", p.linha);
-				strcpy(p.linha,"                                             ");
+				strcpy(p.linha,"");
 				printf("[broadcast]Enviei o sinal SIGUSR2 ao pid %d [%s])\n",usersOnline[i].userPid,usersOnline[i].user);
 			}
 		}
@@ -122,19 +127,23 @@ int gravanoficheiro(char *nomefich,char *linha, int linhaPoxy){
 
 int leficheiro(char *nomefich){ //1 se ler   0 se nao
 	FILE *fp;
-	fp=fopen(nomefich,"r");
-	if(fp==NULL) {puts ("Erro ao abrir ficheiro");
-	return 0;
-}
+	fp=fopen(nomefich,"rt");
+	if(fp==NULL) {
+		printf("2:Erro ao abrir ficheiro %s\n",nomefich);
+		return 0;
+	}
+	else{
+		fclose(fp);
+		return 1;
+	}
+/*
 char * line = NULL;
 size_t len = 8;
 int read;
 while ((read = getline(&line, &len, fp)) != -1) {
 	//  printf("%s", line);
 }
-
-fclose(fp);
-return 1;
+*/
 }
 
 int load(char *nomeficheiro,int nlinhas){
@@ -146,7 +155,7 @@ int load(char *nomeficheiro,int nlinhas){
 	int read;
 	PEDIDO p;
 	if(fp==NULL) {
-		printf("Erro ao abrir ficheiro %s\n",nomeficheiro);
+		printf("3:Erro ao abrir ficheiro %s\n",nomeficheiro);
 		return 0;
 	}
 	printf("%d",nlinhas);
@@ -191,26 +200,31 @@ int checauser(char *nomefich,char *username){ //1 se tiver o username no ficheir
 	int check=0;
 	FILE *fp;
 	fp=fopen(nomefich,"r");
-	if(fp==NULL) {puts ("Erro ao abrir ficheiro");
-	return 0;
-}
-char line[10];
-printf("\nusername[%s]\n",username);
-while (fgets(line,10, fp)!=NULL) {
-	int i;
-	for(i=0;i<9;i++){
-		if(line[i]=='\n'){
-			line[i]='\0';
-		}
+	if(fp==NULL) {
+		printf("4:Erro ao abrir ficheiro %s\n",nomefich);
+		return 0;
 	}
-	printf("\nlinha[%s]",line );
+char line[100];
+printf("\nusername[%s]\n",username);
+
+int ret;
+
+do{
+	ret = fscanf(fp,"%s",line);
+	int i;
+	/*for(i=0;i<9;i++){
+		if(line[i]=='\n'){
+				line[i]='';
+		}
+	}*/
+	printf("\nlinha[%s]\n",line );
 	if(strcmp(line,username)==0)
 	{
 		printf("User ja registado na base de dados\n");
 		check=1;
 		break;
 	}
-}
+}while(feof(fp) == 0);
 fclose(fp);
 return check;
 }
@@ -249,6 +263,7 @@ int main(int argc, char *argv[],char *envp[]) {
 		char *nrows = getenv("MEDIT_MAXLINES");
 		char *ncols = getenv("MEDIT_MAXCOLUMNS");
 		char *nomeficheiro = getenv("MEDIT_FICH");
+		strcpy(nomeficheiro, "medit.db");
 		if(nomeficheiro == NULL || nrows == NULL || ncols == NULL){
 			puts("variaveis de ambiente nao definidas\n executar . ./script.sh");
 			exit(3);
@@ -278,7 +293,7 @@ int main(int argc, char *argv[],char *envp[]) {
 				case 'h': /* help */
 				show_help(argv[0]) ;
 				break ;
-				case 'd': /* opção -f */
+				case 'd': /* opção -d */
 				strcpy(nomefich,optarg);
 				printf("leficheiro: %s\n", nomefich);
 				done=leficheiro(nomefich);
@@ -288,7 +303,7 @@ int main(int argc, char *argv[],char *envp[]) {
 				//printf("leficheiro: %s\n", nomefich);
 				do{
 					if(leficheiro(ficheiroEdit)!=1){
-						printf("erro ao abrir ficheiro %s\n nome do ficheiro:",ficheiroEdit);
+						printf("5:erro ao abrir ficheiro %s\n nome do ficheiro:",ficheiroEdit);
 						scanf("%s",ficheiroEdit);
 					}
 					else{
@@ -311,11 +326,11 @@ int main(int argc, char *argv[],char *envp[]) {
 			}
 		}while(done!=1);
 
-		printf("Comando:" ); fflush(stdout);
 		//shell do servidor
 		mkfifo(FIFO_SER,0600);
-		fd_ser = open(FIFO_SER,O_RDONLY);
+		fd_ser = open(FIFO_SER,O_RDONLY | O_NONBLOCK);
 		fd_lixo = open(FIFO_SER,O_WRONLY);//impedir que fique em espera de um cliente
+		printf("Comando:" ); fflush(stdout);
 		do{
 			FD_ZERO(&fontes); // FD_ZERO() clears a set.
 			FD_SET(0,&fontes); // add a given file descriptor from a set.
@@ -366,9 +381,9 @@ int main(int argc, char *argv[],char *envp[]) {
 				}
 
 				if(strcmp("broadcast",str)==0){
-	p.carater = 'F';
-	p.linhaPoxx = 5;
-	p.linhaPoxy = 5;
+							p.carater = 'F';
+							p.linhaPoxx = 5;
+							p.linhaPoxy = 5;
 					printf("[broadcast] **char:%d[%d,%d]\t", p.carater,p.linhaPoxx,p.linhaPoxy);
 
 					for(i=0;i<5;i++){
@@ -428,7 +443,7 @@ int main(int argc, char *argv[],char *envp[]) {
 					printf("Foi enviado %d bytes em resposta ao user \n",n);
 					if(ret == 1){
 						usleep(700000);
-						broadcastficheiro("texto.txt",pidtosend);
+						//broadcastficheiro("texto.txt",pidtosend);
 					}
 					break;
 					case 2://logout
@@ -499,6 +514,7 @@ int main(int argc, char *argv[],char *envp[]) {
 					*/
 					/*------------------escrever no canal do filho e analisar-------------------------*/
 					//gravar a nova linha no ficheiro
+
 					if(gravanoficheiro(ficheiroEdit,p.linha,p.linhaPoxy)==1){
 						printf("alteracao da linha %d efetuada com exito\n",p.linhaPoxy);
 					}
@@ -507,11 +523,16 @@ int main(int argc, char *argv[],char *envp[]) {
 					}
 					printf("broadcast da nova linha\n");
 					for(i=0;i<5;i++){
-						if(usersOnline[i].userPid !=-1 && usersOnline[i].userPid != p.remetente){
-							kill(usersOnline[i].userPid,SIGUSR2);
+						if(usersOnline[i].userPid !=-1){
+							//kill(usersOnline[i].userPid,SIGUSR2);
 							sprintf(fifo_nome,FIFO_CLI,usersOnline[i].userPid);
 							fd_cli = open(fifo_nome,O_WRONLY);
-							n = write(fd_cli, &p, sizeof(PEDIDO));
+							for ( i = 0; i < ncol; i++) {
+								p.pedido = 5;
+								p.carater = p.linha[i];
+								p.linhaPosx = i;
+								n = write(fd_cli, &p, sizeof(PEDIDO));
+						}
 							close(fd_cli);
 							printf("Enviei o sinal SIGUSR2 ao pid %d [%s])\n",usersOnline[i].userPid,usersOnline[i].user);
 						}
@@ -522,7 +543,7 @@ int main(int argc, char *argv[],char *envp[]) {
 					case 5: //recebe char e manda para todos
 					printf("Foi recebido %d bytes do pedido de broadcast char \n",n);
 
-					printf("[broadcast] **char:%d[%d,%d] %s\t", p.carater,p.linhaPoxx,p.linhaPoxy);
+					printf("[broadcast] **char:%d[%d,%d]\t", p.carater,p.linhaPoxx,p.linhaPoxy);
 
 					for(i=0;i<5;i++){
 						if(usersOnline[i].userPid !=-1){
