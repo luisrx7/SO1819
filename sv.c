@@ -39,14 +39,14 @@ int broadcastficheiro(char *nomefich,int piduser,int ncol){
 	FILE *fp;
 	char fifo_nome[20];
 	fp=fopen(nomefich,"r");
-	char line[45];
+	char line[200];
 	int i,n,fd_cli,nl=0,j;
 	PEDIDO p;
 	if(fp==NULL) {
 		printf("1:Erro ao abrir ficheiro %s\n",nomefich);
 		return 0;
 	}
-	while (fgets(line,46, fp)!=NULL) {
+	while (fgets(line,sizeof(line), fp)!=NULL) {
 		for(i=0;i<5;i++){
 			if(usersOnline[i].userPid == piduser){
 				strcpy(p.linha,line);
@@ -340,9 +340,9 @@ int main(int argc, char *argv[],char *envp[]) {
 
 			if(res>0 && FD_ISSET(0,&fontes)){ // FD_ISSET() tests to see if a file descriptor is part of the set
 				scanf("%s", str);//teclado
-				if(strcmp("clientes",str)==0){
+				if(strcmp("users",str)==0){
 					for(int i=0;i<maxusers;i++)
-					printf("cliente[%d]=%d\t%s\n",i,usersOnline[i].userPid,usersOnline[i].user);
+					printf("cliente[%d]=%d\t%s\t%d\n",i,usersOnline[i].userPid,usersOnline[i].user,usersOnline[i].editinglineN);
 				}
 				if(strcmp("shutdown",str)==0){
 					//desliga os clientes e sai
@@ -460,6 +460,8 @@ int main(int argc, char *argv[],char *envp[]) {
 
 					}
 					break;
+
+
 					case 3: //lockline
 					ret = 1;
 					for(i=0;i<maxusers;i++){
@@ -508,7 +510,7 @@ int main(int argc, char *argv[],char *envp[]) {
 
 					break;
 					case 4: //unlockline
-					printf("Foi recebido %d bytes do pedido de unlockline \n",n);
+					printf("Foi recebido %d bytes do pedido de unlockline da linha %d  \n",n,p.linhaPoxy);
 					ret = 1;
 					for(i=0;i<maxusers;i++){
 						if(usersOnline[i].editinglineN==p.linhaPoxy){// se a linha ja tiver a ser editada
@@ -518,9 +520,23 @@ int main(int argc, char *argv[],char *envp[]) {
 						}
 					}
 
+					for(i=0;i<maxusers;i++){
+						if(usersOnline[i].userPid!= -1){
+							sprintf(fifo_nome,FIFO_CLI,usersOnline[i].userPid);
+							fd_cli = open(fifo_nome,O_WRONLY);
+							p.remetente = getpid();
+							p.tipo = 4;
+							//strcpy(p.username,usernameLOCK);
+
+							write(fd_cli, &p, sizeof(PEDIDO));
+
+							close(fd_cli);
+						}
+					}
+
 					/*------------------escrever no canal do filho e analisar -------------------------*/
 					//    POR FAZER
-
+/*
 					int limpa=0;
 					int nbytes;
 					printf("Received string //teste: [%s]: \n",p.linha);
@@ -533,21 +549,18 @@ int main(int argc, char *argv[],char *envp[]) {
 						nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
 						limpa=1;
 						}
-						while(nbytes = read(canal2[0], readbuffer, sizeof(readbuffer)));//continuar a ler até ter obter do aspell o desejado
-						/*
 						nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
 						if(nbytes==1){
 							nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
 						}
-						*/
-						//readbuffer[nbytes-1] = '\0';
+						readbuffer[nbytes-1] = '\0';
 						//tratar o read
 						if(nbytes>2){
 
 						}
 						printf("Received string: %d [%s]: \n", nbytes,readbuffer);
 					}
-					printf("//teste fim: \n");
+					printf("//teste fim: \n");*/
 					/*------------------escrever no canal do filho e analisar-------------------------*/
 					//gravar a nova linha no ficheiro
 

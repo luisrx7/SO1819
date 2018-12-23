@@ -72,6 +72,7 @@ void unlockline(int linenumber,char *linhatxt){
     p.tipo =4;
     strcpy(p.linha,linhatxt);
     strcpy(p.username,username);
+    linenumber -=3;
     p.linhaPoxy = linenumber;
     sprintf(fifo_nome,FIFO_CLI,getpid());
     mkfifo(fifo_nome,0600);
@@ -323,8 +324,8 @@ int main(int argc, char **argv) {
     PEDIDO p;
     sprintf(fifo_nome,FIFO_CLI,getpid());
     mkfifo(fifo_nome,0600);
-    fd_cli = open(fifo_nome,O_RDONLY | O_NONBLOCK);
-    fd_lixo = open(fifo_nome,O_WRONLY);//impedir que fique em espera
+    fd_cli = open(fifo_nome,O_RDONLY | O_NONBLOCK);//impedir que fique em espera
+    fd_lixo = open(fifo_nome,O_WRONLY);
     fd_ser = open(FIFO_SER,O_WRONLY);
 
 
@@ -349,16 +350,28 @@ int main(int argc, char **argv) {
               move(p.linhaPoxy,p.linhaPoxx);
               delch();
               move(posy,posx);
+              refresh();
+              wrefresh(uiWindow);
+             }
               //mvaddch(p.linhaPoxy,p.linhaPoxx,'|');
-            }
-            if(p.carater == 9&& p.tipo == 5){//delete
+
+
+            if(p.carater == 9 && p.tipo == 5){//delete
               move(p.linhaPoxy,p.linhaPoxx);
               delch();
               move(posy,posx);
               //mvaddch(p.linhaPoxy,p.linhaPoxx,'|');
             }
+
             if(p.tipo == 3){//show locked line
              mvwprintw(usersWindow,p.linhaPoxy,0,p.username);
+             refresh();
+             wrefresh(usersWindow);
+            }
+
+            if(p.tipo == 4){//show unlocked line
+            char *blankusername = "         ";
+             mvwprintw(usersWindow,p.linhaPoxy,0,blankusername);
              refresh();
              wrefresh(usersWindow);
             }
@@ -419,9 +432,9 @@ int main(int argc, char **argv) {
                     if(edicao == 0){ // se esta a 0 é porque antes estava a 1 ou seja tem informacao para enviar para o servidor
                         wprintw(notificacaoWindow,"Modo de navegação no texto");
                         int k;
-                        for (k = 3; k < 48; k++) {
-                            int c = (mvinch(posy, k) & A_CHARTEXT);
-                            linha[k-3] = c;
+                        for (k = 0; k < 45; k++) {
+                            int c = (mvwinch(uiWindow,posy, k) & A_CHARTEXT);
+                            linha[k] = c;
                         }
                         unlockline(posy,linha);
                         move(posy,posx);
@@ -452,7 +465,7 @@ int main(int argc, char **argv) {
                     break;
                     case KEY_BACKSPACE:
                     if(edicao==1){
-                      if(posx >1)posx--;
+                      if(posx >3)posx--;
                   /*    move(posy,posx);
                         delch();*/
 
@@ -473,7 +486,7 @@ int main(int argc, char **argv) {
                       p.tipo = 5;
                       p.linhaPoxx = posx;
                       p.linhaPoxy = posy;
-                      p.carater = 8;
+                      p.carater = 9;
 
                       n=write(fd_ser,&p,sizeof(PEDIDO));
                     }
