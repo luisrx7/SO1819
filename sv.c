@@ -236,8 +236,10 @@ int main(int argc, char *argv[],char *envp[]) {
 	fd_set fontes;
 	PEDIDO p;
 	int canal[2],canal2[2];
-	char limpabuffer[200],checapalavra[1],readbuffer[30],*token;
+	char limpabuffer[200],checapalavra[1],readbuffer[300],*token;
 	const char s[2] = " ";
+	int nbytes,j=0,x=0;
+	char *palavrasRecebidas[20];
 	signal(SIGINT,sair);
 	pipe(canal);
 	pipe(canal2);
@@ -539,115 +541,41 @@ int main(int argc, char *argv[],char *envp[]) {
 							close(fd_cli);
 						}
 					}
-
-					/*------------------escrever no canal do filho e analisar -------------------------*/
-					//    POR FAZER
-
-/*
-					int nbytes;
-					int i;int flag = 0;
 					printf("Received string //teste: [%s]: \n",p.linha);
 					p.linha[45]='\0';
-					//printf("Received string //teste: [%s]: \n",p.linha);
 					token = strtok(p.linha, s);
-					write(canal[1],token,strlen(token));//write canal[1]
-					token = strtok(NULL, s);
 					while( token != NULL ) {
-
-					printf("Enviei [%s]: \n",token);
-					    token[strlen(token)]='\n';
-					    write(canal[1],token,strlen(token));//write canal[1]
-
-					    token = strtok(NULL, s);
-					    if(limpa==0){
-					        nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
-					        limpa=1;
-					        memset( readbuffer,0,strlen(readbuffer));
-					    }
-					    nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
-					    if(nbytes==1){
-					        memset( readbuffer,0,strlen(readbuffer));
-					        nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
-					    }
-					    readbuffer[strlen(readbuffer)] = '\0';
-					    //tratar o read
-					    if(nbytes>2){
-					    }
-					    printf("Received string: %d [%s]: \n", nbytes,readbuffer);
-					    memset( readbuffer,0,strlen(readbuffer));
-
+						//printf("Enviei [%s]: \n",token);
+						//token[strlen(token)]='\n';
+						palavrasRecebidas[j]=malloc(strlen(token)+1);
+						strcpy(palavrasRecebidas[j],token);
+						token = strtok(NULL, s);
+						printf("Vou enviar [%s]: \n",palavrasRecebidas[j]);
+						j++;
 					}
 					printf("//teste fim: \n");
-
-
-
-*/
-
-
-
-
-
-
-
-
-
-						//token[strlen(token)]='\n';
-/*
-						if(strlen(token)>2){ //se tiver mais do que 2 caracteres
-							flag = 1;
+					for(i=0;i<j;i++){
+						write(canal[1],palavrasRecebidas[i],strlen(palavrasRecebidas[i]));//write canal[1]
+						write(canal[1],"\n",1);
+						memset( readbuffer,0,strlen(readbuffer));
+						if(limpa==0){
+							nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
+							limpa=1;
+							memset( readbuffer,0,strlen(readbuffer));
 						}
-					/*	for(i=0;i<strlen(token);i++){
-							if(isalnum(token[i])==0){
-								flag =0;
-								break;
-							}
-						}*/
-					/*	if(flag == 1){
-
-							printf("Enviei [%s]: \n",token);
-							if(limpa==0){ //limpa a versao do aspell
-								//nbytes = read(canal2[0], limpabuffer, sizeof(limpabuffer));
-								limpa=1;
-								memset(limpabuffer,0,strlen(limpabuffer));
-							}
-
-
-
-							do{
-								sleep(5);
-								nbytes = read(canal2[0], checapalavra, sizeof(checapalavra));
-								if(nbytes == 0 || nbytes == EOF){
-									printf("fim do ficheiro\n");
-									break;
-								}
-								printf("%c", checapalavra[0]);
-							}
-							while(checapalavra[0] != '*' || checapalavra[0] != '#' || checapalavra[0] != '\n');
-
-
-							do{
-								nbytes = read(canal2[0], limpabuffer, sizeof(limpabuffer));
-							}
-							while(nbytes != 0);
-
-							if(checapalavra[0] == '*'){
-								printf("Recebeu *\n");
-							}
-							if(checapalavra[0] == '#'){
-								printf("recebeu ######\n");
-							}
-*/
-
-					//readbuffer[strlen(readbuffer)] = '\0';
-							//tratar o read
-							/*if(nbytes==2){//se for asterisco
-
-							}*/
-							//nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
-
-
-					//printf("Received string: %d [%s]: \n", nbytes,readbuffer);
-
+						nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
+						if(nbytes==1){
+							memset( readbuffer,0,strlen(readbuffer));
+							nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
+						}
+						//readbuffer[strlen(readbuffer)-1] = '\0';
+						printf("Received string: %d [%s]: \n", nbytes,readbuffer);
+						if(readbuffer[0]=='#'){
+							p.palavrasErradas[x]=malloc(strlen(palavrasRecebidas[i])+1);
+							strcpy(p.palavrasErradas[x],palavrasRecebidas[i]);
+							x++;
+						}
+					}
 					printf("//teste fim: \n");
 					/*------------------escrever no canal do filho e analisar-------------------------*/
 					//gravar a nova linha no ficheiro
@@ -674,7 +602,12 @@ int main(int argc, char *argv[],char *envp[]) {
 							printf("Enviei o sinal SIGUSR2 ao pid %d [%s])\n",usersOnline[i].userPid,usersOnline[i].user);
 						}
 					}*/
-					printf("%s\n", p.linha);
+					sprintf(fifo_nome,FIFO_CLI,p.remetente);
+					p.remetente = getpid();
+					p.tipo =6;
+					fd_cli = open (fifo_nome,O_WRONLY);
+					n=write(fd_cli,&p,sizeof(PEDIDO));
+					close(fd_cli);
 					break;
 
 					case 5: //recebe char e manda para todos
@@ -715,4 +648,4 @@ int main(int argc, char *argv[],char *envp[]) {
 
 		exit(0);
 }
-	}
+}
