@@ -11,10 +11,11 @@
 
 
 char username[9]={0};
-char linharecebida[45];
-char useraeditarlinha[9];
-int posNL=-1;
-char linhaeditada[45];
+int nrow = 15,ncol = 45;
+//char linharecebida[45];
+//char useraeditarlinha[9];
+//int posNL=-1;
+//char linhaeditada[45];
 
 int checkuser(char *username){
     int fd_cli,fd_ser;
@@ -22,7 +23,7 @@ int checkuser(char *username){
     PEDIDO p;
     int n;
     p.remetente = getpid();
-    p.tipo =1;
+    p.tipo = 1;
     strcpy(p.username,username);
     fd_ser = open (FIFO_SER,O_WRONLY);
     n=write(fd_ser,&p,sizeof(PEDIDO));
@@ -32,11 +33,12 @@ int checkuser(char *username){
     sprintf(fifo_nome,FIFO_CLI,getpid());
     mkfifo(fifo_nome,0600);
     fd_cli=open(fifo_nome,O_RDONLY);
-    n=read(fd_cli,&p,sizeof(PEDIDO));
+    read(fd_cli,&p,sizeof(PEDIDO));
     close(fd_cli);
     //printf("Recebi valid =  %d\n\n",p.valid);
+    ncol = p.linhaPoxx;
+    nrow = p.linhaPoxy;
     return p.valid;
-
 }
 
 int lockline(int linenumber){ //1 se puder editar linha 0 se nao
@@ -116,6 +118,7 @@ void recebe1(int s){
     exit(0);
 }
 
+/*
 void recebelinha(int s){
     int fd_cli,n;
     char fifo_nome[20];
@@ -151,6 +154,7 @@ void recebelinha(int s){
     posNL = p.linhaPoxy;
     //printf("recebi a linha %s\t",p.linha);
 }
+*/
 
 void show_help(char *name) {
     fprintf(stderr, "\
@@ -172,7 +176,7 @@ int main(int argc, char **argv) {
 
 
     signal(SIGUSR1,recebe);
-    signal(SIGUSR2,recebelinha);
+    //signal(SIGUSR2,recebelinha);
     signal(SIGINT,recebe1);
     //verifica se o server está a correr
     if (access(FIFO_SER,F_OK)!=0){
@@ -185,7 +189,7 @@ int main(int argc, char **argv) {
     WINDOW * lnWindow;
     WINDOW * usersWindow;
 
-    char *nrows = getenv("MEDIT_MAXLINES");
+    /*char *nrows = getenv("MEDIT_MAXLINES");
     char *ncols = getenv("MEDIT_MAXCOLUMNS");
     if(nrows == NULL || ncols == NULL){
         puts("variaveis de ambiente nao definidas\n executar . ./script.sh");
@@ -193,7 +197,7 @@ int main(int argc, char **argv) {
     }
 
     nrow = atoi(nrows);
-    ncol = atoi(ncols);
+    ncol = atoi(ncols);*/
     while( (opt = getopt(argc, argv, "hu:V:")) > 0 ) {
         switch ( opt ) {
             case 'h':
@@ -353,14 +357,12 @@ int main(int argc, char **argv) {
               refresh();
               wrefresh(uiWindow);
              }
-              //mvaddch(p.linhaPoxy,p.linhaPoxx,'|');
 
 
             if(p.carater == 9 && p.tipo == 5){//delete
               move(p.linhaPoxy,p.linhaPoxx);
               delch();
               move(posy,posx);
-              //mvaddch(p.linhaPoxy,p.linhaPoxx,'|');
             }
 
             if(p.tipo == 3){//show locked line
@@ -370,14 +372,14 @@ int main(int argc, char **argv) {
             }
 
             if(p.tipo == 4){//show unlocked line
-            char *blankusername = "         ";
-             mvwprintw(usersWindow,p.linhaPoxy,0,blankusername);
-             refresh();
-             wrefresh(usersWindow);
+                char *blankusername = "         ";
+                mvwprintw(usersWindow,p.linhaPoxy,0,blankusername);
+                refresh();
+                wrefresh(usersWindow);
             }
 
-            else{
-              mvwaddch(uiWindow,p.linhaPoxy-3,p.linhaPoxx-3,p.carater);
+            if(p.tipo == 5){
+              mvwaddch(uiWindow,p.linhaPoxy,p.linhaPoxx,p.carater);
               move(posy,posx);
               refresh();
               wrefresh(uiWindow);
@@ -452,8 +454,6 @@ int main(int argc, char **argv) {
                                 int c = (mvinch(posy, k) & A_CHARTEXT);
                                 linha[k-3] = c;
                             }
-
-
                         }
                         else{
                             edicao= !edicao;
