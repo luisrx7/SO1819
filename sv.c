@@ -34,25 +34,56 @@ void sair(int s){// manda sinal para os clientes online a avisar que vai encerra
 	kill(childpid,SIGINT);
 	exit(0);
 }
-int saveFicheiro(char *nomefich){
-	FILE *fp;
-	fp=fopen(nomefich,"a");
-	if (fp == NULL)
-	{
-    printf("Error opening file!\n");
-    exit(1);
-	}
 
+int carregaFichParaArrDinamico(char *nomefich,char *arr[],int ncol1){
+	FILE *fp;
+	fp=fopen(nomefich,"r");
+	char line[200];
+	int i=0,n,fd_cli,nl=0,j;
+	if(fp==NULL) {
+		printf("carregaFichParaArrDinamico:Erro ao abrir ficheiro %s\n",nomefich);
+		return 0;
+	}
+	while (fgets(line,200, fp)!=NULL) {
+		arr[i]=malloc(strlen(line)+1);
+		strcpy(arr[i],line);
+		printf("[%s]",arr[i]);
+		i++;
+		memset(line,0,200);
+	}
+	return i;
 }
+
+int atualizaArrDinamico(char *arr[],int nLinhas,int linhaAlterarY,char *linha){
+	printf("Anterior:[%s]\n",arr[linhaAlterarY]);
+	free(arr[linhaAlterarY]);
+	arr[linhaAlterarY]=malloc(strlen(linha)+1);
+	strcpy(arr[linhaAlterarY],linha);
+	printf("Depois:[%s]\n",arr[linhaAlterarY]);
+}
+
+int guardaArrDinamicoParaFich(char *arr[],char *nomefich,int nLinhas){
+	int i;
+	FILE *fp;
+	fp=fopen(nomefich,"w");
+	if(fp==NULL) {
+		printf("carregaFichParaArrDinamico:Erro ao abrir ficheiro %s\n",nomefich);
+		return 0;
+	}
+	for(i=0;i<nLinhas;i++){
+		fprintf(fp, "%s",arr[i]);
+	}
+	fclose(fp);
+}
+
 int broadcastficheiro(char *nomefich,int piduser,int ncol1){
-	FILE *fp,*fg;
+	FILE *fp;
 	char fifo_nome[20];
 	fp=fopen(nomefich,"r");
-	fg=fopen("guardaFicheiro.txt","w");
 	char line[200];
 	int i,n,fd_cli,nl=0,j;
 	PEDIDO p;
-	if(fp==NULL || fg==NULL) {
+	if(fp==NULL) {
 		printf("1:Erro ao abrir ficheiro %s\n",nomefich);
 		return 0;
 	}
@@ -121,7 +152,7 @@ int leficheiro(char *nomefich){ //1 se ler   0 se nao
 		return 1;
 	}
 	else{
-		printf("2:Erro ficheiro [%s] nao existe\n",nomefich);
+		printf("\n2:Erro ficheiro [%s] nao existe\n",nomefich);
 		return 0;
 	}
 /*
@@ -227,9 +258,9 @@ int main(int argc, char *argv[],char *envp[]) {
 	int canal[2],canal2[2];
 	char limpabuffer[200],readbuffer[300],*token;
 	const char s[2] = " ";
-	int nbytes,j=0;
+	int nbytes,nLinhas;
 	char *palavrasRecebidas[20];
-	char *palavrasErradas[20];
+	//char *palavrasErradas[20];
 	signal(SIGINT,sair);
 	pipe(canal);
 	pipe(canal2);
@@ -246,21 +277,50 @@ int main(int argc, char *argv[],char *envp[]) {
 		exit(0);
 	}
 	else{
-		sleep(1);
+		usleep(250000);
 		  //char *smaxusers = getenv("MEDIT_MAXUSERS");
-			int nrow = 15;
+			char nomeficheiro[50];
+			int nrow = 15; //valor default
 			int ncol = 45;
+			//strcpy(nomeficheiro, "medit.db");
+			char *arrDinamico[nrow];
 		char *nrows = getenv("MEDIT_MAXLINES");
 		char *ncols = getenv("MEDIT_MAXCOLUMNS");
-		char *nomeficheiro = getenv("MEDIT_FICH");
-		strcpy(nomeficheiro, "medit.db");
-		if(nomeficheiro == NULL || nrows == NULL || ncols == NULL){
-			puts("algumas variaveis de ambiente nao definidas\n executar . ./script.sh");
-			//exit(3);
-		}
-		 nrow = atoi(nrows); //Para fazer a conversao
-		 ncol = atoi(ncols);
-		 char *ficheiro[nrow];
+		char *nomeficheiroptr = getenv("MEDIT_FICH");
+
+	if(nomeficheiroptr == NULL){
+    strcpy(nomeficheiro, "medit.db");
+		printf("VA MEDIT_FICH nao definida , foi usado o Default=> %s\n", nomeficheiro);
+	}
+	else{
+		strcpy(nomeficheiro, nomeficheiroptr );
+		nomeficheiro[strlen(nomeficheiro)-1] = '\0';// serve para retirar o \n no fim do ficheiro
+	}
+	//	max 15 linhas, max 45 cols
+
+	if(nrows != NULL){ //verifica senão recebeu bem as linhas
+		nrow = atoi(nrows); //Para fazer a conversao
+	}
+	else{
+		printf("VA MEDIT_MAXLINES nao definida , foi usado o Default=> %d\n", nrow);
+	}
+	if (nrow > 15){ //verifica se excedeu o maximo de linhas
+		puts("Limite de linhas excedido, foi usado o Default\n");
+		nrow = 15;
+	}
+
+	if(ncols != NULL){
+		ncol = atoi(ncols);
+	}
+	else{
+		printf("VA MEDIT_MAXCOLUMNS nao definida , foi usado o Default=> %d\n", ncol);
+	}
+	if (ncol > 45){//verifica se excedeu o maximo de colunas
+		puts("Limite de linhas excedido, foi usado o Default\n");
+		ncol = 45;
+	}
+
+		char *ficheiro[nrow];
 		//maxusers = atoi(smaxusers);
 		int i,a=0;
 		for(i=0;i<maxusers;i++){
@@ -268,9 +328,9 @@ int main(int argc, char *argv[],char *envp[]) {
 			usersOnline[i].editinglineN = -1;
 			strcpy(usersOnline[i].user,"NULL");
 		}
-		strcpy(nomefich,nomeficheiro);
-		puts(nomefich);
-		done=leficheiro(nomefich);
+		//strcpy(nomefich,nomeficheiro);
+		printf("\n[%s]\n",nomeficheiro);
+		done=leficheiro(nomeficheiro);
 		if(access(FIFO_SER,F_OK)==0){
 			fprintf(stderr, "[ERRO] Ja ha um SERVIDOR\n");
 			exit(1);
@@ -281,16 +341,16 @@ int main(int argc, char *argv[],char *envp[]) {
 				show_help(argv[0]) ;
 				break ;
 				case 'd': /* opção -d */
-				strcpy(nomefich,optarg);
-				printf("leficheiro: %s\n", nomefich);
-				done=leficheiro(nomefich);
+				strcpy(nomeficheiro,optarg);
+				printf("leficheiro: %s\n", nomeficheiro);
+				done=leficheiro(nomeficheiro);
 				break ;
 				case 'f': /* opção -f */
 				strcpy(ficheiroEdit,optarg);
 				//printf("leficheiro: %s\n", nomefich);
 				do{
 					if(leficheiro(ficheiroEdit)!=1){
-						printf("5:erro ao abrir ficheiro %s\n nome do ficheiro:",ficheiroEdit);
+						printf("5:erro ao abrir ficheiro %s \n nome do ficheiro:",ficheiroEdit);
 						scanf("%s",ficheiroEdit);
 					}
 					else{
@@ -304,15 +364,15 @@ int main(int argc, char *argv[],char *envp[]) {
 			}
 		}
 		do{
-			if ( (strlen(nomefich) < 1) || done ==0){
+			if ( (strlen(nomeficheiro) < 1) || done ==0){
 				printf("Insira o nome do ficheiro de usernames: ");
-				scanf("%s",nomefich );
+				scanf("%s",nomeficheiro );
 				fflush(stdin);
-				printf("nomefich: %s \n",nomefich);
-				done=leficheiro(nomefich);
+				printf("nomefich: %s \n",nomeficheiro);
+				done=leficheiro(nomeficheiro);
 			}
 		}while(done!=1);
-
+		nLinhas=carregaFichParaArrDinamico(ficheiroEdit,arrDinamico,ncol);
 		//shell do servidor
 		mkfifo(FIFO_SER,0600);
 		fd_ser = open(FIFO_SER,O_RDONLY | O_NONBLOCK);
@@ -345,7 +405,7 @@ int main(int argc, char *argv[],char *envp[]) {
 				if(strcmp("save",str)==0){
 					printf("Insira nome do ficheiro a guardar: \n");
 					scanf("%s",nomefich);
-					//save(nomefich);
+					guardaArrDinamicoParaFich(arrDinamico,nomefich,nLinhas);
 				}
 				if(strcmp("free",str)==0){
 
@@ -359,12 +419,17 @@ int main(int argc, char *argv[],char *envp[]) {
 
 					printf("users");
 				}
+				if(strcmp("arr",str)==0){
+
+					printf("arr");
+				}
+
 
 				printf("Comando:" ); fflush(stdout);
 			}
 			if(res>0 && FD_ISSET(fd_ser,&fontes)){ //pelo pipe
 				n =  read( fd_ser,&p,sizeof(PEDIDO));
-				int ret = 0,x=0;
+				int ret = 0,x=0,numpalavrasreceb=0;
 				int i = 0;
 				int pidtosend = 0;
 				//char usernameLOCK[9];
@@ -374,7 +439,7 @@ int main(int argc, char *argv[],char *envp[]) {
 					//login
 					//executa a resposta
 					//checka o user e responde se é valido ou nao ou se ja esta a ser usado
-					ret = checauser(nomefich,p.username);
+					ret = checauser(nomeficheiro,p.username);
 					if(ret == 1){
 						for(i=0;i<maxusers;i++){
 							if(strcmp(usersOnline[i].user,p.username)==0){// se tiver ja logado na tabela de clientes
@@ -477,13 +542,13 @@ int main(int argc, char *argv[],char *envp[]) {
 					while( token != NULL ) {
 						//printf("Enviei [%s]: \n",token);
 						//token[strlen(token)]='\n';
-						palavrasRecebidas[j]=malloc(strlen(token)+1);
-						strcpy(palavrasRecebidas[j],token);
+						palavrasRecebidas[numpalavrasreceb]=malloc(strlen(token)+1);
+						strcpy(palavrasRecebidas[numpalavrasreceb],token);
 						token = strtok(NULL, s);
-						printf("Vou enviar ao aspell [%s]: \n",palavrasRecebidas[j]);
-						j++;
+						printf("Vou enviar ao aspell [%s]: \n",palavrasRecebidas[numpalavrasreceb]);
+						numpalavrasreceb++;
 					}
-					for(i=0;i<j;i++){
+					for(i=0;i<numpalavrasreceb;i++){
 						write(canal[1],palavrasRecebidas[i],strlen(palavrasRecebidas[i]));//write canal[1]
 						write(canal[1],"\n",1);
 						memset( readbuffer,0,sizeof(readbuffer));
@@ -515,7 +580,6 @@ int main(int argc, char *argv[],char *envp[]) {
 							if(usersOnline[i].editinglineN==p.linhaPoxy){// se a linha ja tiver a ser editada
 								printf("O user: %s desbloqueou a linha %d.\n",usersOnline[i].user,p.linhaPoxy);
 								usersOnline[i].editinglineN = -1;  //desbloqueia a linha
-
 								break;
 							}
 						}
@@ -539,6 +603,10 @@ int main(int argc, char *argv[],char *envp[]) {
 								close(fd_cli);
 							}
 						}
+						atualizaArrDinamico(arrDinamico,nLinhas,p.linhaPoxy,p.linha);
+
+
+
 					}
 					else{
 						sprintf(fifo_nome,FIFO_CLI,pidtosend);
@@ -557,10 +625,10 @@ int main(int argc, char *argv[],char *envp[]) {
 					fd_cli = open (fifo_nome,O_WRONLY);
 					n=write(fd_cli,&p,sizeof(PEDIDO));
 					close(fd_cli);
-				//	for(i=0;i<20;i++){
-					//	memset( p.palavrasErradas,0,20*20);
-						memset(p.palavrasErradas, 0, sizeof(p.palavrasErradas[0][0]) * 20 * 20);
-				//	}
+					for (i = 0; i < numpalavrasreceb ; i++) {
+						free( palavrasRecebidas[i]);
+					}
+					memset(p.palavrasErradas, 0, sizeof(p.palavrasErradas[0][0]) * 20 * 20);
 
 
 

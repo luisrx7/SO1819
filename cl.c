@@ -364,6 +364,8 @@ int main(int argc, char **argv) {
               }
               else{
                   wclear(palavrasWindow);
+                  refresh();
+                  wrefresh(palavrasWindow);
               }
               for(i=0;i<p.nPalavrasErradas;i++){
     						memset( p.palavrasErradas[i],0,20);
@@ -389,12 +391,15 @@ int main(int argc, char **argv) {
                         }
                         if(unlockline(posy,linha)==1){
                             edicao=0;
+                            wprintw(notificacaoWindow,"Modo de navegação no texto");
                         }
                         else{
                             edicao=1;
                             wprintw(notificacaoWindow,"Modo de edição da linha");
                         }
                         move(posy,posx);
+                        refresh();
+                        wrefresh(notificacaoWindow);
                     }
                     else if(edicao == 1){  //edicao a 1      manda info para o serv para bloquear a linha
                         if(lockline(posy-3)==1){
