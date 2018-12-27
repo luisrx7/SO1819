@@ -16,6 +16,8 @@ char linha[300];
 int linhaPoxy;
 int linhaPoxx;
 int carater;
+char palavrasErradas[20][20];
+int nPalavrasErradas;
 }PEDIDO;
 
 typedef struct{
