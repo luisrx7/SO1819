@@ -35,31 +35,48 @@ void sair(int s){// manda sinal para os clientes online a avisar que vai encerra
 	exit(0);
 }
 
-int carregaFichParaArrDinamico(char *nomefich,char *arr[],int ncol1){
+int carregaFichParaArrDinamico(char *nomefich,char *arr[],int ncol1,int nlinhas){
 	FILE *fp;
 	fp=fopen(nomefich,"r");
-	char line[200];
+	char line[200],*ret,line1[ncol1];
 	int i=0,n,fd_cli,nl=0,j;
 	if(fp==NULL) {
 		printf("carregaFichParaArrDinamico:Erro ao abrir ficheiro %s\n",nomefich);
 		return 0;
 	}
-	while (fgets(line,200, fp)!=NULL) {
-		arr[i]=malloc(strlen(line)+1);
+
+	for(j=0;j<ncol1;j++){
+		line1[i] = ' ';
+	}
+	line1[ncol1]='\n';
+
+
+	while ((ret=fgets(line,200, fp))!=NULL) {
+		arr[i]=malloc(strlen(line)+1);//acho que é 	arr[i]=malloc(ncol1)+1);
 		strcpy(arr[i],line);
 		printf("[%s]",arr[i]);
 		i++;
 		memset(line,0,200);
 	}
-	return i;
+	if(ret == NULL && i<nlinhas){
+		for(;i<nlinhas;i++){
+			arr[i]=malloc(strlen(line1)+1);//acho que é 	arr[i]=malloc(ncol1)+1);
+			strcpy(arr[i],line1);
+		}
+	}
+	return i;//quantas leu
+	fclose(fp);
 }
 
 int atualizaArrDinamico(char *arr[],int nLinhas,int linhaAlterarY,char *linha){
+		printf("sss:[%s]\n",linha);
 	printf("Anterior:[%s]\n",arr[linhaAlterarY]);
 	free(arr[linhaAlterarY]);
 	arr[linhaAlterarY]=malloc(strlen(linha)+1);
 	strcpy(arr[linhaAlterarY],linha);
+	arr[linhaAlterarY][strlen(linha)] = '\n';
 	printf("Depois:[%s]\n",arr[linhaAlterarY]);
+
 }
 
 int guardaArrDinamicoParaFich(char *arr[],char *nomefich,int nLinhas){
@@ -377,6 +394,7 @@ int main(int argc, char *argv[],char *envp[]) {
 		mkfifo(FIFO_SER,0600);
 		fd_ser = open(FIFO_SER,O_RDONLY | O_NONBLOCK);
 		fd_lixo = open(FIFO_SER,O_WRONLY);//impedir que fique em espera de um cliente
+		printf("Comandos:\n\tusers :mostra os users\n\tsettings : mostra os settings atuais\n\tload :le um ficheiro\n\tsave :guarda o ficheiro\n\tfree :liberta a linha especificada\n\tstatistics :mostra as estatisticas\n\ttext :mostra o texto como e apresentado ao cliente\n\tshutdown :logout dos clientes e encerra o servidor\n");
 		printf("Comando:" ); fflush(stdout);
 		do{
 			FD_ZERO(&fontes); // FD_ZERO() clears a set.
@@ -420,8 +438,10 @@ int main(int argc, char *argv[],char *envp[]) {
 					printf("users");
 				}
 				if(strcmp("arr",str)==0){
+					for(i=0;i<nLinhas;i++){
+						printf("[%s]",arrDinamico[i]);
+					}
 
-					printf("arr");
 				}
 
 
@@ -432,6 +452,7 @@ int main(int argc, char *argv[],char *envp[]) {
 				int ret = 0,x=0,numpalavrasreceb=0;
 				int i = 0;
 				int pidtosend = 0;
+				char backuplinha[300];
 				//char usernameLOCK[9];
 
 				switch (p.tipo) {
@@ -537,8 +558,10 @@ int main(int argc, char *argv[],char *envp[]) {
 
 
 					printf("Received string //teste: [%s]: \n",p.linha);
-					p.linha[ncol]='\0';
-					token = strtok(p.linha, s);
+					strcpy(backuplinha,p.linha);
+					backuplinha[ncol]='\0';
+					token = strtok(backuplinha, s);
+
 					while( token != NULL ) {
 						//printf("Enviei [%s]: \n",token);
 						//token[strlen(token)]='\n';
@@ -573,7 +596,7 @@ int main(int argc, char *argv[],char *envp[]) {
 					}
 
 
-
+					p.nPalavrasErradas=x;
 
 					if(p.nPalavrasErradas == 0){
 						for(i=0;i<maxusers;i++){
@@ -587,6 +610,7 @@ int main(int argc, char *argv[],char *envp[]) {
 						sprintf(fifo_nome,FIFO_CLI,pidtosend);
 						p.remetente = getpid();
 						p.tipo =1;
+						printf("Recebi valid =  %d\n\n",p.valid);
 						p.valid = 1;
 						mkfifo(fifo_nome,0600);
 						fd_cli = open (fifo_nome,O_WRONLY);
@@ -603,6 +627,7 @@ int main(int argc, char *argv[],char *envp[]) {
 								close(fd_cli);
 							}
 						}
+						printf("----->%s\n",p.linha );
 						atualizaArrDinamico(arrDinamico,nLinhas,p.linhaPoxy,p.linha);
 
 
@@ -621,7 +646,7 @@ int main(int argc, char *argv[],char *envp[]) {
 					sprintf(fifo_nome,FIFO_CLI,pidtosend);
 					p.remetente = getpid();
 					p.tipo = 6;
-					p.nPalavrasErradas=x;
+
 					fd_cli = open (fifo_nome,O_WRONLY);
 					n=write(fd_cli,&p,sizeof(PEDIDO));
 					close(fd_cli);

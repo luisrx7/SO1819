@@ -137,6 +137,7 @@ int main(int argc, char **argv) {
     int skip = 0;
     int uFARg = 0;
     fd_set fontes;
+    int times = 0;//quantas vezes carregou no enter
 
 
 
@@ -376,7 +377,7 @@ int main(int argc, char **argv) {
         if(res>0 && FD_ISSET(0,&fontes)){   //teclado
 
                 ch = getch();
-
+                int ret=0;
                 switch (ch) {
                     case 10: // enter key modo de navegação
 
@@ -389,8 +390,9 @@ int main(int argc, char **argv) {
                             int c = (mvwinch(uiWindow,posy-3, k) & A_CHARTEXT);
                             linha[k] = c;
                         }
-                        if(unlockline(posy,linha)==1){
-                            edicao=0;
+                        ret = unlockline(posy,linha);
+                        if(ret==1){
+                            //edicao=0;
                             wprintw(notificacaoWindow,"Modo de navegação no texto");
                         }
                         else{
@@ -461,7 +463,7 @@ int main(int argc, char **argv) {
                           p.remetente = getpid();
                           p.tipo = 5;
                           p.linhaPoxx = k;
-                          p.linhaPoxy = posy;
+                          p.linhaPoxy = posy-3;
                           p.carater = linhaoriginal[k];
 
                           n=write(fd_ser,&p,sizeof(PEDIDO));
