@@ -72,6 +72,7 @@ int unlockline(int linenumber,char *linhatxt){
     int n;
     p.remetente = getpid();
     p.tipo =4;
+    memset(p.linha,0,sizeof(p.linha));
     strcpy(p.linha,linhatxt);
     strcpy(p.username,username);
     linenumber -=3;
@@ -104,6 +105,24 @@ int logout(){
     sprintf(fifo_nome,FIFO_CLI,getpid());
     unlink(fifo_nome);
     exit(1);
+}
+
+void freelinha(int posy,char *linhaoriginal){
+  int fd_cli,fd_ser;
+  char fifo_nome[20];
+  PEDIDO p;
+  int n;
+  p.remetente = getpid();
+  p.tipo =7;
+  memset(p.linha,0,sizeof(p.linha));
+  strcpy(p.linha,linhaoriginal);
+  strcpy(p.username,username);
+  posy -=3;
+  p.linhaPoxy = posy;
+  sprintf(fifo_nome,FIFO_CLI,getpid());
+  mkfifo(fifo_nome,0600);
+  fd_ser = open (FIFO_SER,O_WRONLY);
+  n=write(fd_ser,&p,sizeof(PEDIDO));
 }
 
 void recebe(int s){
@@ -223,8 +242,8 @@ int main(int argc, char **argv) {
 
     printf("%d",check);
 
-    char linha[44];
-    char linhaoriginal[45];
+    char linha[ncol];
+    char linhaoriginal[ncol];
     initscr(); //INCICIALIZA toda a implementação de estrutura de data
     start_color(); //Inicia funcionalidade das cores
     clear(); //limpa o ecra
@@ -372,6 +391,36 @@ int main(int argc, char **argv) {
     						memset( p.palavrasErradas[i],0,20);
     					}
             }
+
+            if(p.tipo==7){
+                freelinha(posy,linhaoriginal);
+                edicao = 0;
+
+                mvwprintw(notificacaoWindow,1,0,linhaoriginal);
+                refresh();
+                wrefresh(notificacaoWindow);
+
+                //strcpy(linhaoriginal,linha);
+                int k;
+                for (k = 0; k < ncol; k++) {
+                    p.remetente = getpid();
+                    p.tipo = 5;
+                    p.linhaPoxx = k;
+                    p.linhaPoxy = posy-3;
+                    p.carater = linhaoriginal[k];
+                    n=write(fd_ser,&p,sizeof(PEDIDO));
+                }
+
+
+                char *blankusername = "         ";
+                mvwprintw(usersWindow,p.linhaPoxy+1,0,blankusername);
+                refresh();
+                wrefresh(usersWindow);
+
+
+            }
+
+
         }
 
         if(res>0 && FD_ISSET(0,&fontes)){   //teclado
@@ -381,18 +430,36 @@ int main(int argc, char **argv) {
                 switch (ch) {
                     case 10: // enter key modo de navegação
 
+                    times+=1;
+
+
+                    if(times == 1){
+                        memset( linhaoriginal,0,sizeof(linhaoriginal));
+                        int k;
+                        for (k = 0; k < ncol; k++) {
+                            int c = (mvwinch(uiWindow,posy-3, k) & A_CHARTEXT);
+                            linhaoriginal[k] = c;
+                        }
+
+                    }
+
+
                     edicao= !edicao;
                     wclear(notificacaoWindow);
                     //wbkgd(notificacaoWindow, COLOR_PAIR(1));
                     if(edicao == 0){ // se esta a 0 é porque antes estava a 1 ou seja tem informacao para enviar para o servidor
-                        int k;
-                        for (k = 0; k < 45; k++) {
-                            int c = (mvwinch(uiWindow,posy-3, k) & A_CHARTEXT);
-                            linha[k] = c;
-                        }
+
+                            memset( linha,0,sizeof(linha));
+                            int k;
+                            for (k = 0; k < ncol; k++) {
+                                int c = (mvwinch(uiWindow,posy-3, k) & A_CHARTEXT);
+                                linha[k] = c;
+                            }
+
                         ret = unlockline(posy,linha);
                         if(ret==1){
                             //edicao=0;
+                            times = 0;
                             wprintw(notificacaoWindow,"Modo de navegação no texto");
                         }
                         else{
@@ -406,16 +473,9 @@ int main(int argc, char **argv) {
                     else if(edicao == 1){  //edicao a 1      manda info para o serv para bloquear a linha
                         if(lockline(posy-3)==1){
                             wprintw(notificacaoWindow,"Modo de edição da linha");
-                            //scr_dump("bak");
-                            strcpy(linha,""); // lim
 
                             /*   backup da linha   */
 
-                            int k;
-                            for (k = 3; k < 48; k++) {
-                                int c = (mvinch(posy, k) & A_CHARTEXT);
-                                linha[k-3] = c;
-                            }
                         }
                         else{
                             edicao= !edicao;
@@ -457,7 +517,7 @@ int main(int argc, char **argv) {
                         edicao=0;
 
                         //scr_restore("bak");
-                        strcpy(linhaoriginal,linha);
+                        //strcpy(linha,linhaoriginal);
                         int k;
                         for (k = 0; k < ncol; k++) {
                           p.remetente = getpid();
@@ -473,6 +533,7 @@ int main(int argc, char **argv) {
                         move(posy,posx);
                         wclear(notificacaoWindow);
                         wprintw(notificacaoWindow,"Modo de navegação no texto");
+                        wprintw(notificacaoWindow,linhaoriginal);
                         move(posy,posx);
                         wrefresh(notificacaoWindow);
                         wrefresh(uiWindow);
@@ -520,7 +581,6 @@ int main(int argc, char **argv) {
                         //printf("Foi enviado ao serv o char:%d[%d,%d] %s\t", ch,posx,posy);
 
                         //mvaddch(posy,posx,ch); //move carater
-
 
                         if(posx<(ncol+2) && posx != (ncol+2)){
                             posx++;
