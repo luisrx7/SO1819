@@ -9,7 +9,9 @@
 #include <unistd.h>
 #include <signal.h>
 #include "util.h"
+#include <pthread.h>
 
+int maxusers=5;
 CLIENTE usersOnline[5];
 int childpid;
 int nrow = 15; //valor default
@@ -22,6 +24,55 @@ void show_help(char *name) {
 	-f filename escolhe a base de dados do user\n", name) ;
 	exit(-1) ;
 }
+int libertalinha(int freelinha,int user){
+	PEDIDO p;
+	int fd_cli,n;
+	char fifo_nome[20];
+	sprintf(fifo_nome,FIFO_CLI,user);
+	p.remetente = getpid();
+	p.tipo =7;
+	mkfifo(fifo_nome,0600);
+	fd_cli = open (fifo_nome,O_WRONLY);
+	n=write(fd_cli,&p,sizeof(PEDIDO));
+	close(fd_cli);
+	printf("Foi enviado %d bytes em resposta ao user \n",n);
+}
+
+/*void* checkTimeout(void *i){
+	time_t a = *((time_t *) i);
+free(i);
+	while(1==1){
+				fprintf(stderr,"%d asdasd\n", a);
+				int it;
+				time_t currtime = time(NULL);
+				for (it = 0; it < maxusers; it++) {
+					if (currtime - 	usersOnline[it].seg >= a  && usersOnline[it].seg != -1) { //se ja passou 10 seg desda a ultima edicao
+						printf("%s timeout na linha %d \n",usersOnline[it].user,usersOnline[it].editinglineN );
+						libertalinha(usersOnline[it].editinglineN,usersOnline[it].userPid);
+
+
+						PEDIDO p;
+						int fd_cli,n;
+						char fifo_nome[20];
+						sprintf(fifo_nome,FIFO_CLI,usersOnline[it].userPid);
+					//p.remetente = getpid();
+						p.tipo =7;
+						mkfifo(fifo_nome,0600);
+						fd_cli = open (fifo_nome,O_WRONLY);
+						n=write(fd_cli,&p,sizeof(PEDIDO));
+						close(fd_cli);
+						printf("Foi enviado %d bytes em resposta ao user \n",n);
+
+						usersOnline[it].editinglineN = -1;
+						usersOnline[it].seg = -1;
+					}
+				}
+				sleep(1);
+	}
+    return NULL;
+}*/
+
+
 
 void sair(int s){// manda sinal para os clientes online a avisar que vai encerrar
 	int i;
@@ -68,7 +119,7 @@ int atualizaArrDinamico(char *arr[],int nLinhas,int linhaAlterarY,char *linha){
 	free(arr[linhaAlterarY]);
 	arr[linhaAlterarY]=malloc(ncol+1);
 	strcpy(arr[linhaAlterarY],linha);
-	arr[linhaAlterarY][ncol] = '\n';
+	arr[linhaAlterarY][ncol-1] = '\n';
 	printf("Depois:[%.*s]\n",ncol,arr[linhaAlterarY]);
 }
 
@@ -86,41 +137,36 @@ int guardaArrDinamicoParaFich(char *arr[],char *nomefich,int nLinhas){
 	fclose(fp);
 }
 
-int broadcastficheiro(char *nomefich,int piduser,int ncol1){
-	FILE *fp;
+int broadcastArrDinamico(char *arr[],int piduser,int ncol1){
+
 	char fifo_nome[20];
-	fp=fopen(nomefich,"r");
 	char line[200];
 	int i,n,fd_cli,nl=0,j;
 	PEDIDO p;
-	if(fp==NULL) {
-		printf("1:Erro ao abrir ficheiro %s\n",nomefich);
-		return 0;
-	}
-	while (fgets(line,200, fp)!=NULL) {
-		for(i=0;i<5;i++){
+
+		for(i=0;i<maxusers;i++){
 			if(usersOnline[i].userPid == piduser){
-				strcpy(p.linha,line);
 				sprintf(fifo_nome,FIFO_CLI,usersOnline[i].userPid);
 				fd_cli = open(fifo_nome,O_WRONLY);
-				for ( j = 0; j < strlen(p.linha); j++) {
-					if(isalnum(p.linha[j])!=0 || 1==1){
-						p.remetente = getpid();
-						p.tipo = 5;
-						p.carater = p.linha[j];
-						p.linhaPoxy = nl;
-						p.linhaPoxx = j;
-						write(fd_cli, &p, sizeof(PEDIDO));
+
+				for ( i = 0; i < nrow; i++) {
+					for ( j = 0; j < ncol; j++) {
+						line[j] = arr[i][j];
+
 					}
+					for ( j = 0; j < strlen(line); j++) {
+
+					p.remetente = getpid();
+					p.tipo = 5;
+					p.carater = arr[i][j];
+					p.linhaPoxy = i;
+					p.linhaPoxx = j;
+					write(fd_cli, &p, sizeof(PEDIDO));
 				}
-				printf("%s", p.linha);
-				memset( p.linha,0,300);
+				}
 			}
 			close(fd_cli);
 		}
-		nl++;
-		memset(line,0,200);
-	}
 }
 
 int gravanoficheiro(char *nomefich,char *linha, int linhaPoxy){
@@ -258,28 +304,17 @@ fclose(fp);
 return check;
 }
 
-int libertalinha(int freelinha,int user){
-	PEDIDO p;
-	int fd_cli,n;
-	char fifo_nome[20];
-	sprintf(fifo_nome,FIFO_CLI,user);
-	p.remetente = getpid();
-	p.tipo =7;
-	mkfifo(fifo_nome,0600);
-	fd_cli = open (fifo_nome,O_WRONLY);
-	n=write(fd_cli,&p,sizeof(PEDIDO));
-	close(fd_cli);
-	printf("Foi enviado %d bytes em resposta ao user \n",n);
-}
 
 int main(int argc, char *argv[],char *envp[]) {
 	char comando[20],nomefich[30],ficheiroEdit[30];
 	int n,opt,done=0,limpa=0;
-	int fd_lixo,fd_ser,res,fd_cli,maxusers=5;
+	int fd_lixo,fd_ser,res,fd_cli;
 	char fifo_nome[20],str[20];
 	fd_set fontes;
 	PEDIDO p;
-	time_t timeout = 10;//ler da VA
+//	time_t timeout = 10;//ler da VA
+	time_t timeout = 10;
+
 	int canal[2],canal2[2];
 	char limpabuffer[200],readbuffer[300],*token;
 	const char s[2] = " ";
@@ -290,6 +325,8 @@ int main(int argc, char *argv[],char *envp[]) {
 	pipe(canal);
 	pipe(canal2);
 	//fcntl(canal2[0], F_SETFL, O_NONBLOCK);
+
+
 	if((childpid = fork()) == -1){
 		perror("fork");
 		exit(1);
@@ -298,8 +335,9 @@ int main(int argc, char *argv[],char *envp[]) {
 		fprintf(stderr,"filho %d com pai %d\n", getpid(), getppid());
 		dup2(canal2[1],1);//trocar stdout do aspell para o canal2
 		dup2(canal[0],0); //trocar stdin do aspell para o canal
-		execlp("aspell","aspell","--dont-suggest","-a",NULL);//--dont-suggest
+		execlp("aspell","aspell","--dont-suggest","-a","-d","pt_PT",NULL);//--dont-suggest
 		exit(0);
+
 	}
 	else{
 		usleep(250000);
@@ -404,26 +442,32 @@ int main(int argc, char *argv[],char *envp[]) {
 		fd_lixo = open(FIFO_SER,O_WRONLY);//impedir que fique em espera de um cliente
 		printf("Comandos:\n\tusers :mostra os users\n\tsettings : mostra os settings atuais\n\tload :le um ficheiro\n\tsave :guarda o ficheiro\n\tfree :liberta a linha especificada\n\tstatistics :mostra as estatisticas\n\ttext :mostra o texto como e apresentado ao cliente\n\tshutdown :logout dos clientes e encerra o servidor\n");
 		printf("Comando:" ); fflush(stdout);
+		struct timeval tv;
+		tv.tv_sec = 2;
+    tv.tv_usec = 0;
 		do{
 
 
 			FD_ZERO(&fontes); // FD_ZERO() clears a set.
 			FD_SET(0,&fontes); // add a given file descriptor from a set.
 			FD_SET(fd_ser,&fontes);
-			res = select(fd_ser+1,&fontes,NULL,NULL,NULL);
+			res = select(fd_ser+1,&fontes,NULL,NULL,&tv);
 
-			int it;
+			printf("%d ", res );
+			tv.tv_sec = 2;
+			if(res<1){
+
+				int it;
 				time_t currtime = time(NULL);
-			for (it = 0; it < maxusers; it++) {
-				if (currtime - 	usersOnline[it].seg >= timeout && usersOnline[it].seg != -1) { //se ja passou 10 seg desda a ultima edicao
-					printf("%s timeout na linha %d \n",usersOnline[it].user,usersOnline[it].editinglineN );
-					libertalinha(usersOnline[it].editinglineN,usersOnline[it].userPid);
-					usersOnline[it].editinglineN = -1;
-					usersOnline[it].seg = -1;
+				for (it = 0; it < maxusers; it++) {
+					if (currtime - 	usersOnline[it].seg >= timeout  && usersOnline[it].seg != -1) { //se ja passou 10 seg desda a ultima edicao
+						printf("%s timeout na linha %d \n",usersOnline[it].user,usersOnline[it].editinglineN );
+						libertalinha(usersOnline[it].editinglineN,usersOnline[it].userPid);
+						usersOnline[it].editinglineN = -1;
+						usersOnline[it].seg = -1;
+					}
 				}
 			}
-
-
 
 			if(res>0 && FD_ISSET(0,&fontes)){ // FD_ISSET() tests to see if a file descriptor is part of the set
 				scanf("%s", str);//teclado
@@ -521,7 +565,7 @@ int main(int argc, char *argv[],char *envp[]) {
 					printf("Foi enviado %d bytes em resposta ao user \n",n);
 					if(ret == 1){
 						sleep(1);
-						broadcastficheiro(ficheiroEdit,pidtosend,ncol);
+						broadcastArrDinamico(arrDinamico,pidtosend,ncol);
 					}
 					break;
 					case 2://logout
@@ -585,47 +629,54 @@ int main(int argc, char *argv[],char *envp[]) {
 
 					pidtosend = p.remetente;
 
+					if(p.valid == 1){
+						printf("Received string //teste: [%.*s]: \n",ncol,p.linha);
+						strcpy(backuplinha,p.linha);
+						backuplinha[ncol]='\0';
+						token = strtok(backuplinha, s);
 
-					printf("Received string //teste: [%.*s]: \n",ncol,p.linha);
-					strcpy(backuplinha,p.linha);
-					backuplinha[ncol]='\0';
-					token = strtok(backuplinha, s);
-
-					while( token != NULL ) {
-						//printf("Enviei [%s]: \n",token);
-						//token[strlen(token)]='\n';
-						palavrasRecebidas[numpalavrasreceb]=malloc(strlen(token)+1);
-						strcpy(palavrasRecebidas[numpalavrasreceb],token);
-						token = strtok(NULL, s);
-						printf("Vou enviar ao aspell [%s]: \n",palavrasRecebidas[numpalavrasreceb]);
-						numpalavrasreceb++;
-					}
-					for(i=0;i<numpalavrasreceb;i++){
-						write(canal[1],palavrasRecebidas[i],strlen(palavrasRecebidas[i]));//write canal[1]
-						write(canal[1],"\n",1);
-						memset( readbuffer,0,sizeof(readbuffer));
-						if(limpa==0){
-							nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
-							limpa=1;
+						while( token != NULL ) {
+							//printf("Enviei [%s]: \n",token);
+							//token[strlen(token)]='\n';
+							palavrasRecebidas[numpalavrasreceb]=malloc(strlen(token)+1);
+							strcpy(palavrasRecebidas[numpalavrasreceb],token);
+							token = strtok(NULL, s);
+							printf("Vou enviar ao aspell [%s]: \n",palavrasRecebidas[numpalavrasreceb]);
+							numpalavrasreceb++;
+						}
+						for(i=0;i<numpalavrasreceb;i++){
+							write(canal[1],palavrasRecebidas[i],strlen(palavrasRecebidas[i]));//write canal[1]
+							write(canal[1],"\n",1);
 							memset( readbuffer,0,sizeof(readbuffer));
-						}
-						nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
-						if(nbytes==1){
-							memset( readbuffer,0,sizeof(readbuffer));
-							write(canal2[1],s,1);
+							if(limpa==0){
+								nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
+								limpa=1;
+								memset( readbuffer,0,sizeof(readbuffer));
+							}
 							nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
+							if(nbytes==1){
+								memset( readbuffer,0,sizeof(readbuffer));
+								write(canal2[1],s,1);
+								nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
+							}
+							//readbuffer[strlen(readbuffer)-1] = '\0';
+							//printf("Received string: %d [%s]: \n", nbytes,readbuffer);
+							if(readbuffer[0]=='#'){
+								strcpy(p.palavrasErradas[x],palavrasRecebidas[i]);
+								printf("Palavras Erradas,recebidas do aspell [%s]: \n",p.palavrasErradas[x]);
+								x++;
+							}
 						}
-						//readbuffer[strlen(readbuffer)-1] = '\0';
-						//printf("Received string: %d [%s]: \n", nbytes,readbuffer);
-						if(readbuffer[0]=='#'){
-							strcpy(p.palavrasErradas[x],palavrasRecebidas[i]);
-							printf("Palavras Erradas,recebidas do aspell [%s]: \n",p.palavrasErradas[x]);
-							x++;
-						}
-					}
 
 
-					p.nPalavrasErradas=x;
+						p.nPalavrasErradas=x;
+
+				}
+				else{
+						p.nPalavrasErradas=0;
+				}
+
+
 
 					if(p.nPalavrasErradas == 0){
 						for(i=0;i<maxusers;i++){
@@ -689,8 +740,8 @@ int main(int argc, char *argv[],char *envp[]) {
 
 					break;
 					case 5: //recebe char e manda para todos
-					printf("Foi recebido %d bytes do pedido de broadcast char \n",n);
-					printf("[broadcast] **char:%d[%d,%d]\t", p.carater,p.linhaPoxx,p.linhaPoxy);
+					//printf("Foi recebido %d bytes do pedido de broadcast char \n",n);
+					printf("[broadcast] **char:%c[%d,%d]\t", p.carater,p.linhaPoxx,p.linhaPoxy);
 
 
 
@@ -707,7 +758,7 @@ int main(int argc, char *argv[],char *envp[]) {
 						}
 					}
 					printf("\n");
-					printf("[broadcast] **fim\n");
+					//printf("[broadcast] **fim\n");
 					break;
 
 					case 7:

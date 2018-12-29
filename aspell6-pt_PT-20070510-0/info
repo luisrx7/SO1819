@@ -1,0 +1,30 @@
+name_english Portuguese
+name_native português
+lang pt_PT
+#data-file pt_PT_phonet.dat
+data-file pt_PT_repl.dat
+data-file pt_PT_affix.dat
+author:
+  name Jose Joao Almeida
+  name-native José João Almeida
+  email jj at di uminho pt
+  maintainer true
+author:
+  name Alberto Simoes
+  name-native Alberto Simões
+  email ambs at di uminho pt
+  maintainer false
+author:
+  name Rui Vilela
+  email ruivilela at di uminho pt
+  maintainer true
+copyright GPL
+url http://natura.di.uminho.pt/wiki/index.cgi?Dictionary
+version 20070510-0
+source-version 20070510
+accurate true
+complete true
+mode aspell6
+dict:
+  name pt_PT
+  add pt_PT

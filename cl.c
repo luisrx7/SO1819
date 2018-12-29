@@ -65,7 +65,7 @@ int lockline(int linenumber){ //1 se puder editar linha 0 se nao
     return p.valid;
 }
 
-int unlockline(int linenumber,char *linhatxt){
+int unlockline(int linenumber,char *linhatxt,int useaspell){
     int fd_cli,fd_ser;
     char fifo_nome[20];
     PEDIDO p;
@@ -77,6 +77,7 @@ int unlockline(int linenumber,char *linhatxt){
     strcpy(p.username,username);
     linenumber -=3;
     p.linhaPoxy = linenumber;
+    p.valid = useaspell;
     sprintf(fifo_nome,FIFO_CLI,getpid());
     mkfifo(fifo_nome,0600);
     fd_ser = open (FIFO_SER,O_WRONLY);
@@ -396,10 +397,6 @@ int main(int argc, char **argv) {
                 freelinha(posy,linhaoriginal);
                 edicao = 0;
 
-                mvwprintw(notificacaoWindow,1,0,linhaoriginal);
-                refresh();
-                wrefresh(notificacaoWindow);
-
                 //strcpy(linhaoriginal,linha);
                 int k;
                 for (k = 0; k < ncol; k++) {
@@ -456,7 +453,7 @@ int main(int argc, char **argv) {
                                 linha[k] = c;
                             }
 
-                        ret = unlockline(posy,linha);
+                        ret = unlockline(posy,linha,1);
                         if(ret==1){
                             //edicao=0;
                             times = 0;
@@ -529,12 +526,12 @@ int main(int argc, char **argv) {
                           n=write(fd_ser,&p,sizeof(PEDIDO));
                             //mvwaddch(uiWindow,posy,k,linhaoriginal[k-3]);
                         }
-                        unlockline(posy,linhaoriginal);
+                        unlockline(posy,linhaoriginal,0);
                         move(posy,posx);
                         wclear(notificacaoWindow);
                         wprintw(notificacaoWindow,"Modo de navegação no texto");
-                        wprintw(notificacaoWindow,linhaoriginal);
                         move(posy,posx);
+                        refresh();
                         wrefresh(notificacaoWindow);
                         wrefresh(uiWindow);
                     }
