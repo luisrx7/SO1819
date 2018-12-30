@@ -9,7 +9,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include "util.h"
-#include <pthread.h>
 
 int maxusers=5;
 CLIENTE usersOnline[5];
@@ -468,7 +467,11 @@ int main(int argc, char *argv[],char *envp[]) {
 				scanf("%s", str);//teclado
 				if(strcmp("users",str)==0){
 					for(int i=0;i<maxusers;i++)
+<<<<<<< HEAD
 					printf("cliente[%d]=%d\t%s\t%d\t%ld\n",i,usersOnline[i].userPid,usersOnline[i].user, usersOnline[i].editinglineN,usersOnline[i].seg == -1 ? 0:time(NULL) - usersOnline[i].seg);
+=======
+					printf("cliente[%d]=%d\t%s\t%d\t%ld\n",i,usersOnline[i].userPid,usersOnline[i].user,usersOnline[i].editinglineN,(time(NULL) - usersOnline[i].seg));
+>>>>>>> 30e8486e73bc39f928f277dd5acb4afe21e1017e
 				}
 				if(strcmp("shutdown",str)==0){
 					//desliga os clientes e sai
@@ -644,10 +647,12 @@ int main(int argc, char *argv[],char *envp[]) {
 							write(canal[1],"\n",1);
 							memset( readbuffer,0,sizeof(readbuffer));
 							if(limpa==0){
+								write(canal2[1],s,1);								
 								nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
 								limpa=1;
 								memset( readbuffer,0,sizeof(readbuffer));
 							}
+							write(canal2[1],s,1);
 							nbytes = read(canal2[0], readbuffer, sizeof(readbuffer));
 							if(nbytes==1){
 								memset( readbuffer,0,sizeof(readbuffer));
