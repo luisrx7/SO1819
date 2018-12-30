@@ -443,7 +443,7 @@ int main(int argc, char *argv[],char *envp[]) {
 		printf("Comandos:\n\tusers :mostra os users\n\tsettings : mostra os settings atuais\n\tload :le um ficheiro\n\tsave :guarda o ficheiro\n\tfree :liberta a linha especificada\n\tstatistics :mostra as estatisticas\n\ttext :mostra o texto como e apresentado ao cliente\n\tshutdown :logout dos clientes e encerra o servidor\n");
 		printf("Comando:" ); fflush(stdout);
 		struct timeval tv;
-		tv.tv_sec = 2;
+		tv.tv_sec = 1;
     tv.tv_usec = 0;
 		do{
 
@@ -452,10 +452,6 @@ int main(int argc, char *argv[],char *envp[]) {
 			FD_SET(0,&fontes); // add a given file descriptor from a set.
 			FD_SET(fd_ser,&fontes);
 			res = select(fd_ser+1,&fontes,NULL,NULL,&tv);
-
-			printf("%d ", res );
-			tv.tv_sec = 2;
-			if(res<1){
 
 				int it;
 				time_t currtime = time(NULL);
@@ -467,7 +463,6 @@ int main(int argc, char *argv[],char *envp[]) {
 						usersOnline[it].seg = -1;
 					}
 				}
-			}
 
 			if(res>0 && FD_ISSET(0,&fontes)){ // FD_ISSET() tests to see if a file descriptor is part of the set
 				scanf("%s", str);//teclado
