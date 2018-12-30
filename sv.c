@@ -468,7 +468,7 @@ int main(int argc, char *argv[],char *envp[]) {
 				scanf("%s", str);//teclado
 				if(strcmp("users",str)==0){
 					for(int i=0;i<maxusers;i++)
-					printf("cliente[%d]=%d\t%s\t%d\t%d\n",i,usersOnline[i].userPid,usersOnline[i].user,usersOnline[i].editinglineN,(time(NULL) - usersOnline[i].seg));
+					printf("cliente[%d]=%d\t%s\t%d\t%ld\n",i,usersOnline[i].userPid,usersOnline[i].user, usersOnline[i].editinglineN,usersOnline[i].seg == -1 ? 0:time(NULL) - usersOnline[i].seg);
 				}
 				if(strcmp("shutdown",str)==0){
 					//desliga os clientes e sai
@@ -740,7 +740,7 @@ int main(int argc, char *argv[],char *envp[]) {
 
 
 
-					for(i=0;i<5;i++){
+					for(i=0;i<maxusers;i++){
 						if(usersOnline[i].userPid == p.remetente){
 							usersOnline[i].seg = time(NULL); //esta vivo
 						}
